@@ -1,0 +1,18 @@
+<!-- dashboard/_fhir_resource_modal.html.erb -->
+
+<div class="modal fade" id="fhir-resource-modal-<%= resource.id %>" tabindex="-1" aria-labelledby="fhir-resource-modal-label-<%= resource.id %>" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content fw-bold">
+      <div class="modal-header">
+        <h5 class="modal-title" id="fhir-resource-modal-label-<%= resource.id %>"><%= "#{resource.resourceType}/#{resource.id}" %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <pre><%= colorize_json(JSON.pretty_generate(resource)) %></pre>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>

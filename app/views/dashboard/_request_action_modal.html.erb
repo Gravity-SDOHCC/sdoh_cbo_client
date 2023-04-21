@@ -1,0 +1,78 @@
+<div id="request-action-modal-<%= resource.id %>" class="modal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><%= resource.status.capitalize %> Task</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="card">
+          <div class="card-header">
+            <h6 class="card-title">ServiceRequest/<%= resource.focus&.id %></h6>
+          </div>
+          <div class="card-body">
+            <!-- form with a GET method -->
+            <%= form_with url: "/tasks/#{resource.id}/status", method: :get, id: "task-form-#{resource.id}", local: true do %>
+              <div class="label-value">
+                <span class="fw-semibold">Code:</span>
+                <span class="small-text"><%= resource.focus&.description %></span>
+              </div>
+              <div class="label-value">
+                <span class="fw-semibold">Category:</span>
+                <span class="small-text"><%= resource.focus&.category%></span>
+              </div>
+
+              <div class="label-value">
+                <span class="fw-semibold">Status:</span>
+                <select name="task_status" class="form-select small-text" id="task_status-<%= resource.id %>">
+                  <option value="">update the status</option>
+                  <% statuses.each do |status| %>
+                    <option value="<%= status %>"><%= status %></option>
+                  <% end %>
+                </select>
+              </div>
+              <div class="label-value cbo-organization-container" style="display:none;">
+                <span class="fw-semibold">CBO Organization:</span>
+                <select name="cbo_organization_id" class="form-select small-text" id="cbo_organization-<%= resource.id %>">
+                  <% @cbo_organizations.each do |cbo_organization| %>
+                    <option value="<%= cbo_organization.id %>"><%= cbo_organization.name %></option>
+                  <% end %>
+                </select>
+              </div>
+              <div class="label-value status-reason-container" style="display:none;">
+                <span class="fw-semibold">Status Reason:</span>
+                <input type="text" name="status_reason" class="form-control small-text" id="status_reason-<%= resource.id %>">
+              </div>
+
+
+
+              <!-- submit button -->
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="submit" class="btn btn-primary">Submit</button>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById("task_status-<%= resource.id %>").addEventListener("change", function() {
+    const cboOrganizationContainer = document.querySelector(".cbo-organization-container");
+    const statusReasonContainer = document.querySelector(".status-reason-container");
+    if (this.value === "accepted") {
+      cboOrganizationContainer.style.display = "block";
+      statusReasonContainer.style.display = "none";
+    } else if (this.value === "rejected") {
+      cboOrganizationContainer.style.display = "none";
+      statusReasonContainer.style.display = "block";
+    } else {
+      cboOrganizationContainer.style.display = "none";
+      statusReasonContainer.style.display = "none";
+    }
+
+  });
+</script>

@@ -1,0 +1,24 @@
+<div class="min-vh-100 bg-gray-100 d-flex align-items-center justify-content-center">
+  <div class="container px-4 mx-auto">
+    <div class="bg-white shadow-lg rounded-lg p-5 d-flex flex-column flex-md-row">
+      <div class="flex-grow-1 mb-4 md:mb-0">
+        <div class="mb-4 text-center">
+          <%= image_tag "logo.svg", alt: "Logo", class: "w-50" %>
+        </div>
+        <h1 class="text-xl font-bold text-center mb-3">CBO Client App</h1>
+        <p class="text-gray-600 text-center">
+          You have successfully connected to the FHIR server <%= get_requester_server_base_url %>. Please select your organization
+          to query your tasks.
+        </p>
+      </div>
+      <div class="flex-grow-1 md:ml-4">
+        <%= form_with(url: sessions_path, method: :post, local: true, class: "space-y-4") do |form| %>
+          <h2 class="text-lg font-bold mb-2">Select your organization to query your tasks</h2>
+          <%= form.collection_select :organization_id, @organizations, :id, :name, {prompt: 'Select Your Organization'}, {class: 'form-select w-full p-2 border border-gray-300 rounded'}, required: true %>
+
+          <%= form.submit "Connect", class: "btn btn-primary w-full font-bold py-2 px-4 rounded-pill mb-2", disabled: true, id: 'submit-button' %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

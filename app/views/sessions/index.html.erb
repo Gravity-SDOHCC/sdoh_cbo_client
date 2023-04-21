@@ -1,0 +1,68 @@
+<div class="container mt-5">
+  <div class="row">
+    <div class="col-md-6">
+      <div class="logo-container">
+        <h1 class="mb-4 ms-0 fs-2 text-secondaty">
+          <%= image_tag "logo.svg", class: "image", alt: "logo" %>
+          <span>CBO Client App</span>
+        </h1>
+      </div>
+      <p>Welcome to CBO Client, a reference implementation client for the Gravity SDOHCC CBO system!
+        Connect to a CP or EHR FHIR server to get started.</p>
+    </div>
+    <div class="col-md-6">
+      <div class="card mt-4">
+        <div class="card-body">
+          <div class="card-front">
+            <%= form_tag connect_path, method: :post, class: "form-inline justify-content-center" do %>
+              <%= hidden_field_tag :fhir_server_name, "", id: "fhir_server_name" %>
+              <%= select_tag :fhir_server_base_url, options_from_collection_for_select(@fhir_servers, "base_url", "name"), prompt: "Select a CP/EHR server", class: "form-control mb-2 mr-sm-2", id: "fhir_server_base_url" %>
+
+              <%= submit_tag "Connect", class: "btn btn-primary mb-2" %>
+            <% end %>
+
+            <div class="text-center mt-2">
+              <%= link_to "Don't see your server?", "#", class: "flip-card" %>
+            </div>
+          </div>
+
+          <div class="card-back d-none">
+            <h5>Add your CP or EHR FHIR Server</h5>
+            <%= form_tag connect_path, method: :post, class: "form" do %>
+              <div class="form-group">
+                <%= label_tag :fhir_server_name, "Server Name" %>
+                <%= text_field_tag :fhir_server_name, "", class: "form-control" %>
+              </div>
+              <div class="form-group">
+                <%= label_tag :fhir_server_base_url, "Server Base URL" %>
+                <%= text_field_tag :fhir_server_base_url, "", class: "form-control" %>
+              </div>
+              <%= submit_tag "Connect", class: "btn btn-primary mt-3" %>
+            <% end %>
+
+            <div class="text-center mt-2">
+              <%= link_to "Go back", "#", class: "flip-card" %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById("fhir_server_base_url").addEventListener("change", function () {
+    if (this.value) {
+      const selectedServerName = this.options[this.selectedIndex].text;
+      document.getElementById("fhir_server_name").value = selectedServerName;
+    }
+  });
+
+  document.querySelectorAll(".flip-card").forEach((element) => {
+    element.addEventListener("click", (event) => {
+      event.preventDefault();
+      document.querySelector(".card-front").classList.toggle("d-none");
+      document.querySelector(".card-back").classList.toggle("d-none");
+    });
+  });
+</script>

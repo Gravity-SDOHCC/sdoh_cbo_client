@@ -1,0 +1,134 @@
+
+<div class="table-responsive small-text">
+    <table class="table table-sm text-center table-fixed align-middle fw-semibold caption-top">
+      <h3 class="text-secondary"><%= type.capitalize %> Tasks</h3>
+        <thead class="text-center">
+          <tr>
+            <th scope="col">Request Date</th>
+            <th scope="col">Task</th>
+            <th scope="col">Priority</th>
+            <th scope="col">Status</th>
+            <th scope="col">Category</th>
+            <th scope="col">Requester</th>
+            <th scope="col">Patient</th>
+            <th scope="col">Consent</th>
+            <% if type == "completed" %>
+              <th scope="col">Outcomes</th>
+            <% end %>
+            <% if type == "cancelled" || type == "rejected" %>
+              <th scope="col">Reason</th>
+            <% end %>
+            <% if type == "active" %>
+              <th scope="col">Actions</th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <% referrals.each do |referral| %>
+            <tr id="task-row-<%= referral.id %>">
+              <td><%= referral.authored_on %></td>
+              <td>
+                <% if referral.fhir_resource&.id.present? %>
+                  <%= link_to referral.focus&.description, "#fhir-resource-modal-#{referral.id}", data: { bs_toggle: "modal" } %>
+                  <% content_for :modals do %>
+                    <%= render "shared/fhir_resource_modal", resource: referral.fhir_resource %>
+                  <% end %>
+                <% else %>
+                  <%= referral.focus&.description|| "--"  %>
+                <% end %>
+              </td>
+              <td><%= referral.focus&.priority || "-" %></td>
+              <td>
+                <% status = referral.status %>
+
+                <% if status == "requested" %>
+                  <span class="bi bi-arrow-90deg-right  text-primary"></span> Requested
+                <% end %>
+                <% if status == "in-progress" %>
+                  <span class="bi bi-arrow-repeat text-success"></span> In Progress
+                <% end %>
+                <% if status == "completed" %>
+                  <span class="bi bi-check-lg text-success"></span> Completed
+                <% end %>
+                <% if status == "cancelled" || status == "rejected" %>
+                  <span class="bi bi-x-circle text-danger"></span><%= status.capitalize %>
+                <% end %>
+
+                <% if status == "accepted" %>
+                  <span class="bi bi-check-circle text-success"></span> Accepted
+                <% end %>
+              </td>
+              <td>
+                <% if referral.focus&.fhir_resource&.id.present? %>
+                  <%= link_to referral.focus&.category , "#fhir-resource-modal-#{referral.focus&.id}", data: { bs_toggle: "modal" } %>
+                  <% content_for :modals do %>
+                    <%= render "shared/fhir_resource_modal", resource: referral.focus&.fhir_resource %>
+                  <% end %>
+                <% else %>
+                  <%= referral.focus&.category || "-" %>
+                <% end %>
+              </td>
+              <td>
+
+                <% if referral.requester_resource&.id.present? %>
+                  <%= link_to referral.requester_name , "#fhir-resource-modal-#{referral.requester_resource&.id}", data: { bs_toggle: "modal" } %>
+                  <% content_for :modals do %>
+                    <%= render "shared/fhir_resource_modal", resource: referral.requester_resource %>
+                  <% end %>
+                <% else %>
+                  <%= referral.requester_name %>
+                <% end %>
+              </td>
+              <td>
+
+                <% if referral.patient_resource&.id.present? %>
+                  <%= link_to referral.patient_name, "#fhir-resource-modal-#{referral.patient_resource&.id}", data: { bs_toggle: "modal" } %>
+                  <% content_for :modals do %>
+                    <%= render "shared/fhir_resource_modal", resource: referral.patient_resource %>
+                  <% end %>
+                <% else %>
+                  <%= referral.patient_name %>
+                <% end %>
+              </td>
+              <td>
+                <% if referral.consent.present? %>
+                  <%= link_to referral.consent.code, "#fhir-resource-modal-#{referral.consent&.id}", data: { bs_toggle: "modal" } %>
+                  <% content_for :modals do %>
+                    <%= render "shared/fhir_resource_modal", resource: referral.consent.fhir_resource %>
+                  <% end %>
+                <% else %>
+                  --
+                <% end %>
+              </td>
+              <td>
+                <% if type == "completed" %>
+
+                  <% if referral.outcome&.id.present? %>
+                     <%= link_to referral.outcome_type, "#referral-procedure-modal-#{referral.outcome&.id}", data: { bs_toggle: "modal" } %>
+                    <% content_for :modals do %>
+                      <%= render "dashboard/procedure_modal", resource: referral.outcome %>
+                    <% end %>
+                  <% else %>
+                    --
+                  <% end %>
+                <% elsif type == "active" && referral.status == "requested" %>
+                  <%= link_to "accept/reject", "#request-action-modal-#{referral.id}", data: { bs_toggle: "modal" } %>
+                  <% content_for :modals do %>
+                    <%= render "dashboard/request_action_modal", resource: referral, statuses: ["accepted", "rejected"] %>
+                  <% end %>
+                <% elsif type == "active" %>
+                  <%= link_to "update task", "#request-action-modal-#{referral.id}", data: { bs_toggle: "modal" } %>
+                  <% content_for :modals do %>
+                    <%= render "dashboard/request_action_modal", resource: referral, statuses: ["in-progress", "cancelled", "completed"] %>
+                  <% end %>
+                <% elsif status == "rejected" || status == "cancelled" %>
+                  <%= referral.status_reason || "--" %>
+                <% else %>
+                  --
+                <% end %>
+              </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+</div>

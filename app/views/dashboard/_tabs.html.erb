@@ -1,0 +1,9 @@
+<!-- app/views/dashboard/_tabs.html.erb -->
+
+<div data-controller="poll-tasks" data-poll-url="<%= fhir_client_connected? ? poll_tasks_path : "" %>">
+  <div class="tab-content mt-2">
+    <%= render partial: "service_requests", locals: { id: "service-requests", active: active_tab == "service-requests" } %>
+    <%= render partial: "requesting_organizations", locals: { id: "requesting-organizations", active: active_tab == "requesting-organizations" } %>
+
+  </div>
+</div>

@@ -1,0 +1,20 @@
+<!-- app/views/shared/_flash_messages.html.erb -->
+
+<% flash.each_with_index do |(type, message), index| %>
+  <% next unless %w[alert notice error success].include?(type) %>
+  <div id="toast-<%= index %>"
+       class="toast toast--<%= type %>"
+       role="alert"
+       aria-live="assertive"
+       aria-atomic="true"
+       data-controller="toasts">
+    <button type="button" class="close" data-action="toast#hide" aria-label="Close">
+      <span aria-hidden="true">&times;</span>
+    </button>
+    <div class="toast-body">
+      <span class="mr-auto"><%= message %></span>
+    </div>
+  </div>
+<% end %>
+
+

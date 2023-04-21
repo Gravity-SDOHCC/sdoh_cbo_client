@@ -1,0 +1,13 @@
+<!-- app/views/dashboard/_tab.html.erb -->
+
+<li class="nav-item" role="presentation">
+  <a class="nav-link <%= 'active' if active %> menu-tab d-flex" id="<%= id %>-tab" data-bs-toggle="tab" href="#<%= id %>" role="tab" aria-controls="<%= id %>" aria-selected="<%= active %>" data-controller="notifications">
+    <%= label %>
+    <div class="dropdown">
+      <span class="badge bg-primary ms-2 dropdown-toggle" id="<%= id %>-notification-count" style="display:none;" data-bs-toggle="dropdown" aria-expanded="false"></span>
+      <ul class="dropdown-menu" id="<%= id %>-notification-dropdown" aria-labelledby="<%= id %>-notification-count">
+      </ul>
+    </div>
+  </a>
+</li>
+

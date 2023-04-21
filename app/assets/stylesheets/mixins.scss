@@ -1,0 +1,16 @@
+@mixin grow-animation {
+  $id: animation-id();
+
+  @keyframes grow-#{$id} {
+    from {
+      width: 0;
+    }
+
+    to {
+      width: 100%;
+    }
+  }
+
+  animation: grow-#{$id} .5s ease;
+  animation-fill-mode: forwards; // Add this line
+}

@@ -1,0 +1,2 @@
+class FhirServer < ApplicationRecord
+end

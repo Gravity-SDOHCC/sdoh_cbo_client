@@ -1,0 +1,25 @@
+<!-- app/views/dashboard/_main_header.html.erb -->
+
+<header class="main-header py-2">
+  <div class="container-fluid">
+    <div class="row align-items-center justify-content-between">
+      <div class="col-auto">
+        <div class="logo-container">
+          <a href="<%= root_path %>">
+            <%= image_tag "logo.svg", class: "image", alt: "logo" %>
+            <span class="name">CBO Application</span>
+          </a>
+        </div>
+      </div>
+      <div class="col-auto">
+        <ul class="nav nav-tabs nav-fill mb-3" id="dashboardTabs" role="tablist">
+          <%= render partial: "tab", locals: { id: "service-requests", label: "Service Requests", active: active_tab == "service-requests" } %>
+          <%= render partial: "tab", locals: { id: "requesting-organizations", label: "Requesting Organizations", active: active_tab == "requesting-organizations" } %>
+        </ul>
+      </div>
+      <div class="col-auto">
+        <%= render "user_info" %>
+      </div>
+    </div>
+  </div>
+</header>
