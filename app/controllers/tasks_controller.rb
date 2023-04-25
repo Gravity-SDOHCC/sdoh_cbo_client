@@ -1,6 +1,5 @@
 class TasksController < ApplicationController
   before_action :require_fhir_client
-  before_action :get_cbo_organizations, only: [:poll_tasks]
 
   def update_task
     cached_tasks = Rails.cache.read("tasks")
