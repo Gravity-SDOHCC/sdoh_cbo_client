@@ -12,11 +12,4 @@ class ApplicationController < ActionController::Base
       redirect_to home_path
     end
   end
-
-  def get_cbo_organizations
-    @cbo_organizations = Rails.cache.fetch("cbo", expires_in: 1.day) do
-      @fhir_client.read_feed(FHIR::Organization)&.resource&.entry&.map(&:resource).select { |o| o.name != "ABC Coordination Platform" }
-    end
-    @cbo_organizations ||= []
-  end
 end

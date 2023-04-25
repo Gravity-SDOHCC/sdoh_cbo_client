@@ -1,5 +1,5 @@
 class DashboardController < ApplicationController
-  before_action :require_fhir_client, :set_tasks, :get_cbo_organizations
+  before_action :require_fhir_client, :set_tasks
 
   # GET /dashboard
   def main
@@ -13,9 +13,9 @@ class DashboardController < ApplicationController
   def set_tasks
     success, result = fetch_tasks
     if success
-      @active_ehr_tasks = result["active"] || []
-      @completed_ehr_tasks = result["completed"] || []
-      @cancelled_ehr_tasks = result["cancelled"] || []
+      @active_tasks = result["active"] || []
+      @completed_tasks = result["completed"] || []
+      @cancelled_tasks = result["cancelled"] || []
     else
       flash[:warning] = result
     end

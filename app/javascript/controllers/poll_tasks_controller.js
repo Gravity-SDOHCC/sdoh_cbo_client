@@ -19,18 +19,23 @@ export default class extends Controller {
         }
       })
       .then((response) => {
-        const tables = [
-          { id: "active-ehr-tasks-table", data: response.active_ehr_tasks },
-          { id: "completed-ehr-tasks-table", data: response.completed_ehr_tasks },
-          { id: "cancelled-ehr-tasks-table", data: response.cancelled_ehr_tasks },
-        ];
+        if (reponse.error){
+          console.log(response.error);
+        } else {
+          const tables = [
+            { id: "active-tasks-table", data: response.active_tasks },
+            { id: "completed-tasks-table", data: response.completed_tasks },
+            { id: "cancelled-tasks-table", data: response.cancelled_tasks },
+          ];
 
-        tables.forEach((table) => {
-          const tableElement = document.getElementById(table.id);
-          if (tableElement) {
-            tableElement.innerHTML = table.data;
-          }
-        });
+          tables.forEach((table) => {
+            const tableElement = document.getElementById(table.id);
+            if (tableElement && table.data) {
+              tableElement.innerHTML = table.data;
+            }
+          });
+
+        };
 
         setTimeout(() => this.pollTasks(pollUrl), 10000);
       })

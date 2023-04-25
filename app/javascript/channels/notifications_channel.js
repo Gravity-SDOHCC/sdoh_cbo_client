@@ -3,8 +3,7 @@ import consumer from "./consumer"
 consumer.subscriptions.create("NotificationsChannel", {
   received(data) {
     const menuItems = [
-      { id: "service-requests", notificationId: "ehr_task_notifications", menuLabel: "Service Requests" },
-      { id: "our-tasks", notificationId: "cp_task_notifications", menuLabel: "Our Tasks" },
+      { id: "service-requests", notificationId: "task_notifications", menuLabel: "Service Requests" }
     ];
 
     menuItems.forEach((menuItem) => {

@@ -2,22 +2,22 @@
 
 <div class="tab-pane fade <%= "show active" if active %>" id="<%= id %>" role="tabpanel" aria-labelledby="<%= id %>-tab">
 
-  <% if @active_ehr_tasks.nil? && @completed_ehr_tasks.nil? && @cancelled_ehr_tasks.nil? %>
+  <% if @active_tasks.nil? && @completed_tasks.nil? && @cancelled_tasks.nil? %>
     <h5 class="text-muted text-center my-3"> There no requests yet</h5>
   <% else %>
     <div class="table-wrapper y-3 px-3 border-bottom">
-      <div id="active-ehr-tasks-table">
-        <%= render "ehr_tasks_table", referrals: @active_ehr_tasks, type: "active" %>
+      <div id="active-tasks-table">
+        <%= render "tasks_table", referrals: @active_tasks, type: "active" %>
       </div>
     </div>
     <div class="table-wrapper my-5 px-3 border-bottom">
-      <div id="completed-ehr-tasks-table">
-        <%= render "ehr_tasks_table", referrals: @completed_ehr_tasks, type: "completed" %>
+      <div id="completed-tasks-table">
+        <%= render "tasks_table", referrals: @completed_tasks, type: "completed" %>
       </div>
     </div>
     <div class="table-wrapper mt-5 px-3">
-      <div id="cancelled-ehr-tasks-table">
-        <%= render "ehr_tasks_table", referrals: @cancelled_ehr_tasks, type: "cancelled" %>
+      <div id="cancelled-tasks-table">
+        <%= render "tasks_table", referrals: @cancelled_tasks, type: "cancelled" %>
       </div>
     </div>
   <% end %>
