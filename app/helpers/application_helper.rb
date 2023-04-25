@@ -4,7 +4,7 @@ module ApplicationHelper
 
   def fetch_and_cache_organizations
     Rails.cache.fetch("organizations_#{session[:requester_server_base_url]}", expires_in: 1.day) do
-      response = FHIR::Organizations.search
+      response = FHIR::Organization.search
 
       if response.is_a?(FHIR::Bundle)
         entries = response.entry.map(&:resource)

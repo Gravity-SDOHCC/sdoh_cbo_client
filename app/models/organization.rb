@@ -4,6 +4,6 @@ class Organization
   def initialize(fhir_organization)
     @id = fhir_organization.id
     @fhir_resource = fhir_organization
-    @code = fhir_organization.name
+    @name = fhir_organization.name
   end
 end

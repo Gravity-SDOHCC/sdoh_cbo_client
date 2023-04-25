@@ -1,5 +1,5 @@
 class SessionsController < ApplicationController
-  before_action :require_fhir_client, only: %i[select_org destroy]
+  before_action :require_fhir_client, only: %i[select_org set_org destroy]
   # Get /home
   def index
     if fhir_client_connected?
@@ -26,9 +26,9 @@ class SessionsController < ApplicationController
         save_user_id(TEST_PROVIDER_ID)
 
         flash[:success] = "Successfully connected to #{fhir_server.name}"
-        redirect_to dashboard_path
+        redirect_to select_org_path
       else
-        flash[:error] = "Failed to connect to the provided CP server, verify the URL provided is correct."
+        flash[:error] = "Failed to connect to the provided referral source server, verify the URL provided is correct."
         redirect_to home_path
       end
     rescue StandardError => e
@@ -38,12 +38,16 @@ class SessionsController < ApplicationController
     end
   end
 
-  def selet_org
-    @patients = ffetch_and_cache_organizations
+  def select_org
+    @organizations = fetch_and_cache_organizations
+    if @organizations&.empty?
+      flash[:warning] = "There are no organizations on the server. You need to select an org to query tasks for."
+      redirect_to dasboard_path
+    end
   rescue => e
-    flash[:danger] = e.message
     reset_session
     Rails.cache.clear
+    flash[:error] = e.message
     redirect_to home_path
   end
 

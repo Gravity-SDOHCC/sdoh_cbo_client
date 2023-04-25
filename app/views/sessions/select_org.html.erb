@@ -12,11 +12,11 @@
         </p>
       </div>
       <div class="flex-grow-1 md:ml-4">
-        <%= form_with(url: sessions_path, method: :post, local: true, class: "space-y-4") do |form| %>
+        <%= form_with(url: set_org_path, method: :post, local: true, class: "space-y-4") do |form| %>
           <h2 class="text-lg font-bold mb-2">Select your organization to query your tasks</h2>
-          <%= form.collection_select :organization_id, @organizations, :id, :name, {prompt: 'Select Your Organization'}, {class: 'form-select w-full p-2 border border-gray-300 rounded'}, required: true %>
+          <%= form.collection_select :organization_id, @organizations, :id, :name, {prompt: 'Select Your Organization'}, {class: 'form-select w-full my-3 p-2 border border-gray-300 rounded', required: true } %>
 
-          <%= form.submit "Connect", class: "btn btn-primary w-full font-bold py-2 px-4 rounded-pill mb-2", disabled: true, id: 'submit-button' %>
+          <%= form.submit "Connect", class: "btn btn-primary w-full font-bold py-2 px-4 rounded-pill mb-2", id: 'submit-button' %>
         <% end %>
       </div>
     </div>
