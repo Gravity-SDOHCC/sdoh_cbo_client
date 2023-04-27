@@ -83,4 +83,4 @@ production:
   <<: *default
   database: sdoh_cbo_client_production
   username: sdoh_cbo_client
-  password: <%= ENV["SDOH_cbo_client_DATABASE_PASSWORD"] %>
+  password: <%= ENV["SDOH_CBO_CLIENT_DATABASE_PASSWORD"] %>
