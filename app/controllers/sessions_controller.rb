@@ -42,7 +42,7 @@ class SessionsController < ApplicationController
     @organizations = fetch_and_cache_organizations
     if @organizations&.empty?
       flash[:warning] = "There are no organizations on the server. You need to select an org to query tasks for."
-      redirect_to dasboard_path
+      redirect_to dashboard_path
     end
   rescue => e
     reset_session
