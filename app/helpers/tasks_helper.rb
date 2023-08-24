@@ -2,7 +2,7 @@ module TasksHelper
   include SessionsHelper
 
   def save_tasks(tasks)
-    Rails.cache.write("tasks", tasks, expires_in: 1.day)
+    Rails.cache.write(tasks_key, tasks, expires_in: 1.day)
   end
 
   def fetch_tasks
