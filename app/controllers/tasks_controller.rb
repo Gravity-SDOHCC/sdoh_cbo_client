@@ -3,38 +3,39 @@ class TasksController < ApplicationController
 
   def update_task
     cached_tasks = Rails.cache.read("tasks")
+    client = get_fhir_client
     begin
       task = cached_tasks.present? ? cached_tasks.find { |t| t.id == params[:id] }&.fhir_resource : FHIR::Task.read(params[:id])
       sr_id = task.focus&.reference&.split("/")&.last
-      service_request = FHIR::ServiceRequest.read(sr_id)
+      service_request = client.read(FHIR::ServiceRequest, sr_id).resource
       if task.present?
         status = params[:status] == "status" ? params[:task_status] : params[:status]
         task.status = status
         if status == "accepted" || status == "in-progress"
-          task_result = task.update
+          client.update(task, task.id)
         elsif status == "rejected" || status == "cancelled"
           task.statusReason = { text: params[:status_reason] }
-          task.update
+          client.update(task, task.id)
         elsif status == "completed"
           procedure = create_procedure(task, service_request)
           task.output = [
             {
-              "type": {
-                "coding": [
+              type: {
+                coding: [
                   {
-                    "system": "http://hl7.org/fhir/us/sdoh-clinicalcare/CodeSystem/SDOHCC-CodeSystemTemporaryCodes",
-                    "code": "resulting-activity",
-                    "display": "Resulting Activity",
+                    system: "http://hl7.org/fhir/us/sdoh-clinicalcare/CodeSystem/SDOHCC-CodeSystemTemporaryCodes",
+                    code: "resulting-activity",
+                    display: "Resulting Activity",
                   },
                 ],
               },
-              "valueReference": {
-                "reference": "Procedure/#{procedure.id}",
+              valueReference: {
+                reference: "Procedure/#{procedure.id}",
               },
             },
           ]
           # TODO create a procedure, attach it to task then save
-          task.update
+          client.update(task, task.id)
         end
 
         flash[:success] = "Task has been marked as #{status}."
@@ -106,6 +107,6 @@ class TasksController < ApplicationController
     procedure.subject = service_request.subject
     procedure.reasonReference = service_request.reasonReference
     procedure.performedDateTime = Time.now.utc.strftime("%Y-%m-%d")
-    procedure.create
+    get_fhir_client.create(procedure).resource
   end
 end
