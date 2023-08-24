@@ -1,10 +1,9 @@
 class Task
   attr_reader :id, :status, :focus, :owner_reference, :owner_name, :requester_name,
               :requester_resource, :patient_name, :patient_resource, :outcome, :consent,
-              :outcome_type, :authored_on, :status_reason, :fhir_resource
+              :outcome_type, :authored_on, :status_reason, :fhir_resource, :fhir_client
 
-  def initialize(fhir_task)
-    # byebug
+  def initialize(fhir_task, fhir_client)
     @id = fhir_task.id
     @fhir_resource = fhir_task
     @status = fhir_task.status
@@ -40,9 +39,11 @@ class Task
 
   def get_fhir_resource(fhir_class, ref)
     resource_id = get_id_from_reference(ref)
-    fhir_resource = fhir_class.read(resource_id) if resource_id
+    return if resource_id.blank?
+
+    fhir_resource = fhir_client.read(fhir_class, resource_id).resource
     # sometimes for some reason read returns FHIR::Bundle
-    fhir_resource = fhir_resource&.resource&.entry&.first&.resource if fhir_resource.is_a?(FHIR::Bundle)
+    fhir_resource = fhir_resource&.entry&.first&.resource if fhir_resource.is_a?(FHIR::Bundle)
     fhir_resource
   end
 
