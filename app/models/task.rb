@@ -4,6 +4,7 @@ class Task
               :outcome_type, :authored_on, :status_reason, :fhir_resource, :fhir_client
 
   def initialize(fhir_task, fhir_client)
+    @fhir_client = fhir_client
     @id = fhir_task.id
     @fhir_resource = fhir_task
     @status = fhir_task.status

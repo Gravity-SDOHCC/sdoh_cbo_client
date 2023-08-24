@@ -2,7 +2,7 @@ class TasksController < ApplicationController
   before_action :require_fhir_client
 
   def update_task
-    cached_tasks = Rails.cache.read("tasks")
+    cached_tasks = Rails.cache.read(tasks_key)
     client = get_fhir_client
     begin
       task = cached_tasks.present? ? cached_tasks.find { |t| t.id == params[:id] }&.fhir_resource : FHIR::Task.read(params[:id])
@@ -45,7 +45,7 @@ class TasksController < ApplicationController
     rescue => e
       flash[:error] = "Unable to update task: #{e.message}"
     end
-    Rails.cache.delete("tasks")
+    Rails.cache.delete(tasks_key)
     redirect_to dashboard_path
   end
 
@@ -53,8 +53,8 @@ class TasksController < ApplicationController
     if !fhir_client_connected?
       render json: { error: "Session expired" }, status: 440 and return
     end
-    cached_tasks = Rails.cache.read("tasks") || []
-    Rails.cache.delete("tasks")
+    cached_tasks = Rails.cache.read(tasks_key) || []
+    Rails.cache.delete(tasks_key)
     success, result = fetch_tasks
 
     if success
@@ -62,10 +62,10 @@ class TasksController < ApplicationController
       @completed_tasks = result["completed"] || []
       @cancelled_tasks = result["cancelled"] || []
 
-      new_taks_list = Rails.cache.read("tasks") || []
+      new_tasks_list = Rails.cache.read(tasks_key) || []
       # check if any active tasks have changed status
       updated_tasks = []
-      new_taks_list.each do |task|
+      new_tasks_list.each do |task|
         saved_task = cached_tasks.find { |t| t.id == task.id }
         if saved_task && saved_task.status != task.status
           updated_tasks << task

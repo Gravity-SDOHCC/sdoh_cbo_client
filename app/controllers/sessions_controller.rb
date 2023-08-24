@@ -1,5 +1,6 @@
 class SessionsController < ApplicationController
-  before_action :require_fhir_client, only: %i[select_org set_org destroy]
+  # before_action :require_fhir_client, only: %i[select_org set_org destroy]
+
   # Get /home
   def index
     if fhir_client_connected?
