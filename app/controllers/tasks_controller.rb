@@ -5,7 +5,7 @@ class TasksController < ApplicationController
     cached_tasks = Rails.cache.read(tasks_key)
     client = get_fhir_client
     begin
-      task = cached_tasks.present? ? cached_tasks.find { |t| t.id == params[:id] }&.fhir_resource : FHIR::Task.read(params[:id])
+      task = cached_tasks.present? ? cached_tasks.find { |t| t.id == params[:id] }&.fhir_resource : client.read(FHIR::Task, params[:id]).resource
       sr_id = task.focus&.reference&.split("/")&.last
       service_request = client.read(FHIR::ServiceRequest, sr_id).resource
       if task.present?
