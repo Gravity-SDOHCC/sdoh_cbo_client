@@ -16,6 +16,12 @@ module SessionsHelper
     !!Rails.cache.read(client_key)
   end
 
+  def clear_cache
+    Rails.cache.delete(client_key)
+    Rails.cache.delete(tasks_key)
+    Rails.cache.delete(organizations_key)
+  end
+
   def save_requester_server_base_url(base_url)
     session[:requester_server_base_url] = base_url
   end
@@ -58,5 +64,9 @@ module SessionsHelper
 
   def tasks_key
     "#{session_id}_tasks"
+  end
+
+  def organizations_key
+    "organizations_#{get_requester_server_base_url}"
   end
 end

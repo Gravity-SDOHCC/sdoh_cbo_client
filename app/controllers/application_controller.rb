@@ -7,7 +7,7 @@ class ApplicationController < ActionController::Base
       get_fhir_client
     else
       reset_session
-      Rails.cache.clear
+      clear_cache
       flash[:error] = "Your session has expired. Plesase connect to a FHIR server"
       redirect_to home_path
     end
