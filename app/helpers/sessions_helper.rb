@@ -67,6 +67,6 @@ module SessionsHelper
   end
 
   def organizations_key
-    "organizations_#{get_requester_server_base_url}"
+    "#{session_id}_organizations}"
   end
 end
