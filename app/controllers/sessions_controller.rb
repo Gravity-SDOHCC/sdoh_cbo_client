@@ -1,5 +1,6 @@
 class SessionsController < ApplicationController
-  before_action :require_fhir_client, only: %i[select_org set_org destroy]
+  # before_action :require_fhir_client, only: %i[select_org set_org destroy]
+
   # Get /home
   def index
     if fhir_client_connected?
@@ -46,7 +47,7 @@ class SessionsController < ApplicationController
     end
   rescue => e
     reset_session
-    Rails.cache.clear
+    clear_cache
     flash[:error] = e.message
     redirect_to home_path
   end
@@ -59,7 +60,7 @@ class SessionsController < ApplicationController
   # delete /disconnect
   def destroy
     reset_session
-    Rails.cache.clear
+    clear_cache
     flash[:success] = "Successfully disconnected from the FHIR server"
     redirect_to root_path
   end

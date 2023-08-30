@@ -2,39 +2,40 @@ class TasksController < ApplicationController
   before_action :require_fhir_client
 
   def update_task
-    cached_tasks = Rails.cache.read("tasks")
+    cached_tasks = Rails.cache.read(tasks_key)
+    client = get_fhir_client
     begin
-      task = cached_tasks.present? ? cached_tasks.find { |t| t.id == params[:id] }&.fhir_resource : FHIR::Task.read(params[:id])
+      task = cached_tasks.present? ? cached_tasks.find { |t| t.id == params[:id] }&.fhir_resource : client.read(FHIR::Task, params[:id]).resource
       sr_id = task.focus&.reference&.split("/")&.last
-      service_request = FHIR::ServiceRequest.read(sr_id)
+      service_request = client.read(FHIR::ServiceRequest, sr_id).resource
       if task.present?
         status = params[:status] == "status" ? params[:task_status] : params[:status]
         task.status = status
         if status == "accepted" || status == "in-progress"
-          task_result = task.update
+          client.update(task, task.id)
         elsif status == "rejected" || status == "cancelled"
           task.statusReason = { text: params[:status_reason] }
-          task.update
+          client.update(task, task.id)
         elsif status == "completed"
           procedure = create_procedure(task, service_request)
           task.output = [
             {
-              "type": {
-                "coding": [
+              type: {
+                coding: [
                   {
-                    "system": "http://hl7.org/fhir/us/sdoh-clinicalcare/CodeSystem/SDOHCC-CodeSystemTemporaryCodes",
-                    "code": "resulting-activity",
-                    "display": "Resulting Activity",
+                    system: "http://hl7.org/fhir/us/sdoh-clinicalcare/CodeSystem/SDOHCC-CodeSystemTemporaryCodes",
+                    code: "resulting-activity",
+                    display: "Resulting Activity",
                   },
                 ],
               },
-              "valueReference": {
-                "reference": "Procedure/#{procedure.id}",
+              valueReference: {
+                reference: "Procedure/#{procedure.id}",
               },
             },
           ]
           # TODO create a procedure, attach it to task then save
-          task.update
+          client.update(task, task.id)
         end
 
         flash[:success] = "Task has been marked as #{status}."
@@ -44,7 +45,7 @@ class TasksController < ApplicationController
     rescue => e
       flash[:error] = "Unable to update task: #{e.message}"
     end
-    Rails.cache.delete("tasks")
+    Rails.cache.delete(tasks_key)
     redirect_to dashboard_path
   end
 
@@ -52,8 +53,8 @@ class TasksController < ApplicationController
     if !fhir_client_connected?
       render json: { error: "Session expired" }, status: 440 and return
     end
-    cached_tasks = Rails.cache.read("tasks") || []
-    Rails.cache.delete("tasks")
+    cached_tasks = Rails.cache.read(tasks_key) || []
+    Rails.cache.delete(tasks_key)
     success, result = fetch_tasks
 
     if success
@@ -61,10 +62,10 @@ class TasksController < ApplicationController
       @completed_tasks = result["completed"] || []
       @cancelled_tasks = result["cancelled"] || []
 
-      new_taks_list = Rails.cache.read("tasks") || []
+      new_tasks_list = Rails.cache.read(tasks_key) || []
       # check if any active tasks have changed status
       updated_tasks = []
-      new_taks_list.each do |task|
+      new_tasks_list.each do |task|
         saved_task = cached_tasks.find { |t| t.id == task.id }
         if saved_task && saved_task.status != task.status
           updated_tasks << task
@@ -106,6 +107,6 @@ class TasksController < ApplicationController
     procedure.subject = service_request.subject
     procedure.reasonReference = service_request.reasonReference
     procedure.performedDateTime = Time.now.utc.strftime("%Y-%m-%d")
-    procedure.create
+    get_fhir_client.create(procedure).resource
   end
 end

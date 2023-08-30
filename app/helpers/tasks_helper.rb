@@ -2,7 +2,7 @@ module TasksHelper
   include SessionsHelper
 
   def save_tasks(tasks)
-    Rails.cache.write("tasks", tasks, expires_in: 1.day)
+    Rails.cache.write(tasks_key, tasks, expires_in: 1.day)
   end
 
   def fetch_tasks
@@ -15,7 +15,7 @@ module TasksHelper
         entries = response.resource.entry.map(&:resource)
         task_entries = entries.select { |entry| entry.resourceType == "Task" }
 
-        tasks = task_entries.map { |entry| Task.new(entry) }
+        tasks = task_entries.map { |entry| Task.new(entry, client) }
 
         grp = group_tasks(tasks)
         save_tasks(tasks)
