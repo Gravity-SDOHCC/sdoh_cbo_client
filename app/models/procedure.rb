@@ -14,8 +14,8 @@ class Procedure
   private
 
   def read_codeable_concept(codeable_concept)
-    diplay = codeable_concept&.coding&.map(&:display)&.join(", ")
-    diplay ? diplay : codeable_concept&.coding&.map(&:code)&.join(", ")&.gsub("-", " ")&.titleize
+    display = codeable_concept&.coding&.map(&:display)&.join(", ")
+    display || codeable_concept&.coding&.map(&:code)&.join(", ")&.gsub("-", " ")&.titleize
   end
 
   def read_reference(reference)

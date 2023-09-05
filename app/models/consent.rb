@@ -11,6 +11,6 @@ class Consent
 
   def read_codeable_concept(codeable_concept)
     c = codeable_concept&.coding&.first
-    c&.display ? c&.display : c&.code&.gsub("-", " ")&.titleize
+    c&.display || c&.code&.gsub("-", " ")&.titleize
   end
 end
