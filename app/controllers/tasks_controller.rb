@@ -40,9 +40,13 @@ class TasksController < ApplicationController
 
         flash[:success] = "Task has been marked as #{status}."
       else
+        Rails.logger.error("Unable to update task: task not found")
+
         flash[:error] = "Unable to update task: task not found"
       end
     rescue => e
+      Rails.logger.error(e.full_message)
+
       flash[:error] = "Unable to update task: #{e.message}"
     end
     Rails.cache.delete(tasks_key)
@@ -51,6 +55,8 @@ class TasksController < ApplicationController
 
   def poll_tasks
     if !fhir_client_connected?
+      Rails.logger.error("Session expired")
+
       render json: { error: "Session expired" }, status: 440 and return
     end
     cached_tasks = Rails.cache.read(tasks_key) || []
@@ -66,14 +72,17 @@ class TasksController < ApplicationController
       # check if any active tasks have changed status
       updated_tasks = []
       new_tasks_list.each do |task|
-        saved_task = cached_tasks.find { |t| t.id == task.id }
+        saved_task = cached_tasks.find { |t| t&.id == task&.id }
         if saved_task && saved_task.status != task.status
           updated_tasks << task
         end
       end
       @task_notifications = updated_tasks&.map do |t|
-        msg = t.status == "requested" ? "new referral source task requested" : "task #{t.focus&.description} was updated to #{t.status}"
-        [msg, t.id]
+        msg =
+          t&.status == "requested" ?
+            "new referral source task requested" :
+            "task #{t&.focus&.description} was updated to #{t&.status}"
+        [msg, t&.id]
       end || []
       ActionCable.server.broadcast "notifications", { task_notifications: @task_notifications.to_json }
       render json: {
@@ -83,6 +92,7 @@ class TasksController < ApplicationController
              }
     else
       Rails.logger.error("Unable to fetch tasks: #{result}")
+
       render json: {
         error: "Unable to fetch tasks",
       }
@@ -107,6 +117,7 @@ class TasksController < ApplicationController
     procedure.subject = service_request.subject
     procedure.reasonReference = service_request.reasonReference
     procedure.performedDateTime = Time.now.utc.strftime("%Y-%m-%d")
+
     get_fhir_client.create(procedure).resource
   end
 end
