@@ -12,21 +12,27 @@ module TasksHelper
     begin
       response = client.search(FHIR::Task, search: task_search_params)
       if response.response[:code] == 200
-        entries = response.resource.entry.map(&:resource)
-        task_entries = entries.select { |entry| entry.resourceType == "Task" }
+        entries = response.resource&.entry&.map(&:resource)
+        task_entries = entries&.select { |entry| entry&.resourceType == "Task" }
 
-        tasks = task_entries.map { |entry| Task.new(entry, client) }
+        tasks = task_entries&.map { |entry| Task.new(entry, client) }
 
         grp = group_tasks(tasks)
         save_tasks(tasks)
 
         [true, grp]
       else
+        Rails.logger.error("Failed to fetch referral tasks. Status: #{response.response[:code]} - #{response.response[:body]}")
+
         [false, "Failed to fetch referral tasks. Status: #{response.response[:code]} - #{response.response[:body]}"]
       end
     rescue Errno::ECONNREFUSED => e
+      Rails.logger.error(e.full_message)
+
       [false, "Connection refused. Please check FHIR server's URL #{get_ehr_base_url} is up and try again. #{e.message}"]
     rescue StandardError => e
+      Rails.logger.error(e.full_message)
+
       [false, "Something went wrong. #{e.message}"]
     end
   end
@@ -36,19 +42,15 @@ module TasksHelper
   def group_tasks(tasks)
     grp = { "active" => [], "completed" => [], "cancelled" => [] }
     tasks&.each do |task|
-      grp["active"] << task if task.status != "completed" && task.status != "cancelled" && task.status != "rejected"
-      grp["completed"] << task if task.status == "completed"
-      grp["cancelled"] << task if task.status == "cancelled" || task.status == "rejected"
+      grp["active"] << task if task&.status != "completed" && task&.status != "cancelled" && task&.status != "rejected"
+      grp["completed"] << task if task&.status == "completed"
+      grp["cancelled"] << task if task&.status == "cancelled" || task&.status == "rejected"
     end
     grp
   end
 
-  def get_id_from_reference(ref_obj)
-    ref_obj&.reference&.split("/")&.last
-  end
-
   def task_search_params
-    search_params = {
+    {
       parameters: {
         _profile: "http://hl7.org/fhir/us/sdoh-clinicalcare/StructureDefinition/SDOHCC-TaskForReferralManagement",
         owner: "Organization/#{get_my_org_id}",
