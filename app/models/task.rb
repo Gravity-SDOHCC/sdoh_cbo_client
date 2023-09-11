@@ -1,4 +1,6 @@
 class Task
+  include ModelHelper
+
   attr_reader :id, :status, :focus, :owner_reference, :owner_name, :requester_name,
               :requester_resource, :patient_name, :patient_resource, :outcome, :consent,
               :outcome_type, :authored_on, :status_reason, :fhir_resource
@@ -6,6 +8,7 @@ class Task
   def initialize(fhir_task, fhir_client)
     @id = fhir_task.id
     @fhir_resource = fhir_task
+    remove_client_instances(@fhir_resource)
     @status = fhir_task.status
     sr_resource = get_fhir_resource(FHIR::ServiceRequest, fhir_task.focus, fhir_client) if fhir_task.focus.present?
     @focus = ServiceRequest.new(sr_resource) if sr_resource.present?
@@ -16,12 +19,14 @@ class Task
       fhir_task.requester&.reference&.include?("Organization") ?
         get_fhir_resource(FHIR::Organization, fhir_task.requester, fhir_client) :
         get_fhir_resource(FHIR::PractitionerRole, fhir_task.requester, fhir_client)
+    remove_client_instances(@requester_resource)
     @outcome = get_outcome(fhir_task.output&.first, fhir_client)
     @consent = get_consent(@focus&.fhir_resource, fhir_client)
     @authored_on = fhir_task.authoredOn&.to_date
     @status_reason = fhir_task.statusReason&.text
     @patient_name = fhir_task.for&.display
     @patient_resource = get_fhir_resource(FHIR::Patient, fhir_task.for, fhir_client)
+    remove_client_instances(@patient_resource)
   end
 
   private

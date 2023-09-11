@@ -1,9 +1,12 @@
 class Procedure
+  include ModelHelper
+
   attr_reader :id, :status, :category, :description, :performed_date, :problem, :fhir_resource
 
   def initialize(fhir_procedure)
     @id = fhir_procedure.id
     @fhir_resource = fhir_procedure
+    remove_client_instances(@fhir_resource)
     @status = fhir_procedure.status
     @category = read_codeable_concept(fhir_procedure.category)
     @description = read_codeable_concept(fhir_procedure.code)
