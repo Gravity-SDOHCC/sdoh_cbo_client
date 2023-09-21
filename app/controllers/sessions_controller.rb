@@ -45,7 +45,7 @@ class SessionsController < ApplicationController
   def select_org
     @organizations = fetch_and_cache_organizations
     if @organizations&.empty?
-      Rails.logger.warning("There are no organizations on the server.")
+      Rails.logger.warn("There are no organizations on the server.")
 
       flash[:warning] = "There are no organizations on the server. You need to select an org to query tasks for."
       redirect_to dashboard_path
