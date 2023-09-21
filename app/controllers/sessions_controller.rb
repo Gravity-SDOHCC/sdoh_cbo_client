@@ -29,11 +29,14 @@ class SessionsController < ApplicationController
         flash[:success] = "Successfully connected to #{fhir_server.name}"
         redirect_to select_org_path
       else
+        Rails.log.error("Failed to connect to the provided referral source server.")
+
         flash[:error] = "Failed to connect to the provided referral source server, verify the URL provided is correct."
         redirect_to home_path
       end
     rescue StandardError => e
-      puts "Error happened:#{e.class} => #{e.message}"
+      Rails.log.error(e.full_message)
+
       flash[:error] = "Failed to connect to the provided server, verify the URL provided is correct. Error: #{e.message}"
       redirect_to home_path
     end
@@ -42,10 +45,14 @@ class SessionsController < ApplicationController
   def select_org
     @organizations = fetch_and_cache_organizations
     if @organizations&.empty?
+      Rails.log.warning("There are no organizations on the server.")
+
       flash[:warning] = "There are no organizations on the server. You need to select an org to query tasks for."
       redirect_to dashboard_path
     end
   rescue => e
+    Rails.log.error(e.full_message)
+
     reset_session
     clear_cache
     flash[:error] = e.message

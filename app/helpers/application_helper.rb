@@ -7,9 +7,11 @@ module ApplicationHelper
       response = get_fhir_client.search(FHIR::Organization).resource
 
       if response.is_a?(FHIR::Bundle)
-        entries = response.entry.map(&:resource)
-        entries.map { |entry| Organization.new(entry) }
+        entries = response.entry&.map(&:resource)
+        entries&.map { |entry| Organization.new(entry) }
       else
+        Rails.logger.error("Error fetching organizations from FHIR server. Status code: #{response.response[:code]}")
+
         raise "Error fetching organizations from FHIR server. You need to identify as an organization to get started. Status code: #{response.response[:code]}"
       end
     end
