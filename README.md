@@ -1,41 +1,54 @@
 # Gravity SDOH CBO Client Reference Implementation
 
-This is a reference implementation for the Communinity Base Organization (CBO) system as defined in the [Gravity SDOHCC Implementation Guide](https://build.fhir.org/ig/HL7/fhir-sdoh-clinicalcare/CapabilityStatement-SDOHCC-CoordinationPlatform.html#title)
+This is a reference implementation for the Communinity Base Organization (CBO)
+system as defined in the [Gravity SDOHCC Implementation
+Guide](http://hl7.org/fhir/us/sdoh-clinicalcare/).
 
-This CBO RI behaves as  ‘Light’ referral recipient. It acts as client, querying for tasks on the initiating Referral Sources or Coordination Platforms and creating any resulting Procedure records within the server they received the request from.
+This CBO RI behaves as a [‘Light’ referral
+recipient](http://hl7.org/fhir/us/sdoh-clinicalcare/CapabilityStatement-SDOHCC-ReferralRecipientLight.html).
+It acts as client, querying for tasks on the initiating Referral Sources or
+Coordination Platforms and creating any resulting Procedure records within the
+server they received the request from.
 
+## Setup
+This application is built with Ruby on Rails. To run it locally, first [install
+rails](https://guides.rubyonrails.org/getting_started.html#creating-a-new-rails-project-installing-rails).
 
+* Clone this repository: `git clone
+  https://github.com/Gravity-SDOHCC/sdoh_referral_source_client.git`
+* Navigate to the root of this repository: `cd sdoh_referral_source_client`
+* Install dependencios: `bundle install`
+* Set up the database: `bundle exec rake db:setup`
+* Run the application: `bundle exec rails s`
+  * If you need to run the application on a different port, specify the `PORT`
+    environment variable: `PORT=3333 bundle exec rails s`
+* Navigate to `http://localhost:3000` in your browser
 
-## Prerequisites
-- ruby 2.7.5
-- postgresql
-- memcache
-- Node.js 14.0.0 or higher
-- Yarn 1.22.0 or higher
+## Usage
+See [the usage
+documentation](https://github.com/Gravity-SDOHCC/sdoh_referral_source_client/blob/master/docs/usage.md)
+for instructions on using the reference implementations.
 
-## Built With
-- Rails 7
-- Bootstrap 5
-- Stimulus
-- ActionCable
+## Known Issues
+* Sometimes it takes multiple attempts to connect to a FHIR server
+* Users can not select which procedure is being performed in order to complete a
+  referral
 
+## License
+Copyright 2023 The MITRE Corporation
 
-## Running Locally
-- start postgresql and memcache on your sysmtem. This is important as the app will not
-run without.
-- run `rake db:create` then `rake db:migrate` to create and migrate the database. This is only necessary for the first time.
-- run `rails s` to start the app. The app will be availabe at http://localhost:3000
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+```
+http://www.apache.org/licenses/LICENSE-2.0
+```
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
 
-## Running with Docker
-A `docker-compose.yml` is provided to build and run the app with PostgreSQL using Docker Compose.
-This `docker-compose.yml`  file defines two services: `app` and `db`. The `app` ervice builds the application using the Dockerfile, exposes port 3000, and sets environment variables for the database connection. The `db` service uses the official PostgreSQL image and configures the user, password, and database name. Additionally, a named volume is used to persist PostgreSQL data.
+## Trademark Notice
 
-To start the application, simply run `docker-compose up`. The app will be availabe at http://localhost:3000.
-
->> When editing the code, you might want to run `docker-compose build` first to rebuild the image, then run `docker-compose up`. If you are running into issues regarding assets not present in the asset pipeline, consider clearing your precompiled assets `rm -rf public/assets` and rebuilding the Docker image `docker-compose build`.
-
-Press `control + c` or `ctrl + c` to stop the app.
-
-## Using the App (Demo)
-This CBO client is configured to work with the [Gravity CP FHIR server RI]() or [Gravity CP FHIR server](),
-but can also integrate with other CP/EHR FHIR servers for testing.
+HL7, FHIR and the FHIR [FLAME DESIGN] are the registered trademarks of Health
+Level Seven International and their use does not constitute endorsement by HL7.
