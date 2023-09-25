@@ -15,8 +15,8 @@ This application is built with Ruby on Rails. To run it locally, first [install
 rails](https://guides.rubyonrails.org/getting_started.html#creating-a-new-rails-project-installing-rails).
 
 * Clone this repository: `git clone
-  https://github.com/Gravity-SDOHCC/sdoh_referral_source_client.git`
-* Navigate to the root of this repository: `cd sdoh_referral_source_client`
+  https://github.com/Gravity-SDOHCC/sdoh_cbo_client.git`
+* Navigate to the root of this repository: `cd sdoh_cbo_client`
 * Install dependencios: `bundle install`
 * Set up the database: `bundle exec rake db:setup`
 * Run the application: `bundle exec rails s`
@@ -31,6 +31,8 @@ for instructions on using the reference implementations.
 
 ## Known Issues
 * Sometimes it takes multiple attempts to connect to a FHIR server
+* Sometimes when new links are added to the page (such as when a new referral is
+  received), clicking o the link will have no effect until the page is reloaded
 * Users can not select which procedure is being performed in order to complete a
   referral
 
