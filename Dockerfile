@@ -15,16 +15,19 @@ COPY . .
 
 # Install Node.js, Yarn, and apt-utils
 RUN apt-get update && \
-  apt-get install -y --no-install-recommends apt-utils && \
-  curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
-  apt-get install -y nodejs && \
-  npm install --global yarn
+    apt-get install -y ca-certificates curl gnupg && \
+    mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
+    echo 'deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main' | tee /etc/apt/sources.list.d/nodesource.list && \
+    apt-get -qy update && \
+    apt-get -qy install nodejs && \
+    npm install --global yarn
 
 # Precompile assets
 RUN yarn install --check-files --production
 RUN RAILS_ENV=production \
   NODE_ENV=production \
-  SECRET_KEY_BASE=$(bundle exec rails secret) \
+  EDITOR=vim rails credentials:edit && \
   bundle exec rails assets:precompile
 
 # Expose the port that the application will run on

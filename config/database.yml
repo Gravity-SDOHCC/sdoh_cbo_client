@@ -78,9 +78,11 @@ test:
 # for a full overview on how database connection configuration can be specified.
 #
 production:
-  adapter: postgresql
-  encoding: unicode
-  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
-  database: sdoh_cbo_client_production
-  username: sdoh_cbo_client
-  password: <%= ENV["SDOH_CBO_CLIENT_DATABASE_PASSWORD"] %>
+  <<: *default
+  database: db/production.sqlite3
+  # adapter: postgresql
+  # encoding: unicode
+  # pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  # database: sdoh_cbo_client_production
+  # username: sdoh_cbo_client
+  # password: <%= ENV["SDOH_CBO_CLIENT_DATABASE_PASSWORD"] %>
