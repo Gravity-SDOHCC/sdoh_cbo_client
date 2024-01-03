@@ -8,7 +8,7 @@ WORKDIR /app
 COPY Gemfile Gemfile.lock ./
 
 # Install bundler and the dependencies specified in Gemfile
-RUN gem install bundler && bundle install
+RUN gem install bundler -v 2.4.22 && bundle install
 
 # Copy the application code into the container
 COPY . .
