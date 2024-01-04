@@ -16,10 +16,10 @@ services:
       RAILS_ENV: production
       RAILS_LOG_TO_STDOUT: "true"
       RAILS_SERVE_STATIC_FILES: "true"
+      # APPLICATION_HOST: "localhost:3000"
     restart: unless-stopped
     command: >
-      bash -c "bundle exec rails db:create db:migrate &&
-               bundle exec rails server -b 0.0.0.0 -p 3000"
+      bash -c "bundle exec rails server -p 3000"
 
   # redis:
   #   image: redis:alpine

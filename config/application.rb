@@ -18,5 +18,8 @@ module SdohCoordinationPlatformClient
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+
+    # Override the default host if set in the environment
+    config.action_controller.default_url_options = { host: ENV["APPLICATION_HOST"] || config.action_controller.default_url_options || "localhost:3000" }
   end
 end

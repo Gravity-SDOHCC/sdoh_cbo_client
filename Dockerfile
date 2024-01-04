@@ -25,16 +25,18 @@ RUN apt-get update && \
 
 # Precompile assets
 RUN yarn install --check-files --production
+RUN EDITOR=vim rails credentials:edit
+
+# Seed the prod database... Remove if using manually creating/migrating a Postgres DB
 RUN RAILS_ENV=production \
   NODE_ENV=production \
-  EDITOR=vim rails credentials:edit && \
-  bundle exec rails assets:precompile
+  bundle exec rails assets:precompile db:create db:migrate
 
 # Expose the port that the application will run on
 EXPOSE 3000
 
 # Start the application server
-CMD ["bundle", "exec", "rails", "server", "-b", "0.0.0.0", "-p", "3000"]
+CMD ["bundle", "exec", "rails", "server", "-p", "3000"]
 
 
 
