@@ -1,5 +1,7 @@
 # Gravity SDOH CBO Client Reference Implementation
 
+[![Build status](https://dev.azure.com/lantanagroup/CMS/_apis/build/status/SDOH/SDOH%20CBO%20Client)](https://dev.azure.com/lantanagroup/CMS/_build/latest?definitionId=168)
+
 This is a reference implementation for the Communinity Base Organization (CBO)
 system as defined in the [Gravity SDOHCC Implementation
 Guide](http://hl7.org/fhir/us/sdoh-clinicalcare/).
