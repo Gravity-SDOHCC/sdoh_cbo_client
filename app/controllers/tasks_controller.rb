@@ -67,6 +67,10 @@ class TasksController < ApplicationController
       @active_tasks = result["active"] || []
       @completed_tasks = result["completed"] || []
       @cancelled_tasks = result["cancelled"] || []
+      if get_capacity_status == "at-capacity"
+        newly_rejected, @active_tasks = auto_reject_at_capacity(@active_tasks)
+        @cancelled_tasks = newly_rejected + @cancelled_tasks
+      end
 
       new_tasks_list = Rails.cache.read(tasks_key) || []
       # check if any active tasks have changed status
@@ -119,5 +123,36 @@ class TasksController < ApplicationController
     procedure.performedDateTime = Time.now.utc.strftime("%Y-%m-%d")
 
     get_fhir_client.create(procedure).resource
+  end
+
+  def auto_reject_at_capacity(tasks)
+    client = get_fhir_client
+    at_capacity_since = get_capacity_status_set_at
+    rejected, remaining = [], []
+    tasks.each do |task|
+      if task.status == "requested" && requested_after?(task, at_capacity_since)
+        fhir_task = task.fhir_resource
+        fhir_task.status = "rejected"
+        fhir_task.statusReason = { text: "Rejected - at capacity" }
+        client.update(fhir_task, fhir_task.id)
+        rejected << Task.new(fhir_task, client)
+      else
+        remaining << task
+      end
+    end
+    [rejected, remaining]
+  end
+
+  # Only tasks requested AFTER the organization went to capacity are
+  # auto-rejected; requests already received keep their place in the queue.
+  def requested_after?(task, at_capacity_since)
+    return false if at_capacity_since.nil?
+
+    authored_on = task.fhir_resource&.authoredOn
+    return false if authored_on.blank?
+
+    Time.parse(authored_on) > at_capacity_since
+  rescue ArgumentError
+    false
   end
 end

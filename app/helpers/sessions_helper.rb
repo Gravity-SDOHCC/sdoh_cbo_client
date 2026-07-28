@@ -38,6 +38,19 @@ module SessionsHelper
     session[:org_id]
   end
 
+  def save_capacity_status(status)
+    session[:capacity_status] = status
+    session[:capacity_status_set_at] = Time.now.utc.iso8601
+  end
+
+  def get_capacity_status
+    session[:capacity_status] || "capacity"
+  end
+
+  def get_capacity_status_set_at
+    session[:capacity_status_set_at] && Time.parse(session[:capacity_status_set_at])
+  end
+
   def save_user_id(user_id)
     session[:user_id] = user_id
   end

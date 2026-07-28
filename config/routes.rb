@@ -10,4 +10,5 @@ Rails.application.routes.draw do
   get "dashboard", to: "dashboard#index"
   get "tasks/:id/:status", to: "tasks#update_task"
   get "poll_tasks", to: "tasks#poll_tasks"
+  post "/capacity_status", to: "capacity#update", as: :capacity_status
 end
