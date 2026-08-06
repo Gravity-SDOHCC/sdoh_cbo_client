@@ -1,15 +1,25 @@
 class CapacityController < ApplicationController
   before_action :require_fhir_client
 
-  VALID_STATUSES = %w[capacity at-capacity has-waitlist].freeze
+  VALID_STATUSES = %w[capacity at-capacity has-waitlist assessment-required].freeze
   CAPACITY_EXTENSION_URL = "http://hl7.org/fhir/us/sdoh-clinicalcare/StructureDefinition/SDOHCC-ExtensionHealthcareServiceCapacityStatus".freeze
   TEMPORARY_CODE_SYSTEM = "http://hl7.org/fhir/us/sdoh-clinicalcare/CodeSystem/SDOHCC-CodeSystemTemporaryCodes".freeze
 
-  # Map UI statuses to the codes defined in SDOHCC-CodeSystemTemporaryCodes
+  # SDOHCC-ExtensionHealthcareServiceCapacityStatus is a complex extension: the
+  # code goes on a capacityStatus sub-extension (1..1) and a value on the outer
+  # extension is prohibited (Extension.value[x] is 0..0).
+  CAPACITY_STATUS_SUB_EXTENSION_URL = "capacityStatus".freeze
+
+  # Map UI statuses to the codes defined in SDOHCC-CodeSystemTemporaryCodes.
+  # That CodeSystem defines only no-capacity, capacity, waitlist and
+  # additional-assessment-required -- "no-capacity-has-waitlist" was never one
+  # of them, and referral clients bound to SDOHCC-ValueSetCapacityStatus will
+  # not recognize it.
   STATUS_TO_CODE = {
     "capacity" => "capacity",
     "at-capacity" => "no-capacity",
-    "has-waitlist" => "no-capacity-has-waitlist",
+    "has-waitlist" => "waitlist",
+    "assessment-required" => "additional-assessment-required",
   }.freeze
 
   def update
@@ -56,14 +66,19 @@ class CapacityController < ApplicationController
       service.extension.reject! { |e| e.url == CAPACITY_EXTENSION_URL }
       service.extension << FHIR::Extension.new(
         url: CAPACITY_EXTENSION_URL,
-        valueCodeableConcept: FHIR::CodeableConcept.new(
-          coding: [
-            FHIR::Coding.new(
-              system: TEMPORARY_CODE_SYSTEM,
-              code: code
+        extension: [
+          FHIR::Extension.new(
+            url: CAPACITY_STATUS_SUB_EXTENSION_URL,
+            valueCodeableConcept: FHIR::CodeableConcept.new(
+              coding: [
+                FHIR::Coding.new(
+                  system: TEMPORARY_CODE_SYSTEM,
+                  code: code
+                )
+              ]
             )
-          ]
-        )
+          )
+        ]
       )
 
       if is_new
