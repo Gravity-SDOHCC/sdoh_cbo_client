@@ -1,0 +1,10 @@
+<div class="btn-group capacity-status-toggle" role="group" aria-label="Capacity Status">
+  <span class="me-2 text-muted small align-self-center">Capacity Status</span>
+  <% [["capacity", "Capacity Available", "success"],
+      ["at-capacity", "At Capacity", "danger"],
+      ["has-waitlist", "Has Waitlist", "warning"],
+      ["assessment-required", "Additional Assessment Required", "info"]].each do |value, label, style| %>
+    <%= button_to label, capacity_status_path, params: { capacity_status: value }, method: :post,
+          class: "btn btn-sm #{get_capacity_status == value ? "btn-#{style}" : "btn-outline-#{style}"}" %>
+  <% end %>
+</div>

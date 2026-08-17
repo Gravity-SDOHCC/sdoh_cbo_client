@@ -50,7 +50,10 @@
                 <% if status == "completed" %>
                   <span class="bi bi-check-lg text-success"></span> Completed
                 <% end %>
-                <% if status == "cancelled" || status == "rejected" %>
+                <% if status == "rejected" && referral.status_reason == "Rejected - at capacity" %>
+                  <span class="badge bg-danger">Rejected — At Capacity</span>
+                  <span class="badge bg-light text-danger border border-danger ms-1">auto-rejected</span>
+                <% elsif status == "cancelled" || status == "rejected" %>
                   <span class="bi bi-x-circle text-danger"></span><%= status.capitalize %>
                 <% end %>
 
