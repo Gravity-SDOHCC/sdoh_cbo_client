@@ -67,7 +67,9 @@ class TasksController < ApplicationController
       @active_tasks = result["active"] || []
       @completed_tasks = result["completed"] || []
       @cancelled_tasks = result["cancelled"] || []
-      if get_capacity_status == "at-capacity"
+      # Read from the HealthcareService, not the session, so auto-rejection keeps
+      # working across new sessions, restarts and other users of the same CBO.
+      if get_capacity_status == CapacityStatus::AT_CAPACITY
         newly_rejected, @active_tasks = auto_reject_at_capacity(@active_tasks)
         @cancelled_tasks = newly_rejected + @cancelled_tasks
       end
@@ -145,6 +147,8 @@ class TasksController < ApplicationController
 
   # Only tasks requested AFTER the organization went to capacity are
   # auto-rejected; requests already received keep their place in the queue.
+  # The cutoff is HealthcareService.meta.lastUpdated -- i.e. when the capacity
+  # status was last written to FHIR -- so it is not lost with the session.
   def requested_after?(task, at_capacity_since)
     return false if at_capacity_since.nil?
 
