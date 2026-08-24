@@ -80,6 +80,6 @@ module SessionsHelper
   end
 
   def organizations_key
-    "#{session_id}_organizations}"
+    "#{session_id}_organizations"
   end
 end
