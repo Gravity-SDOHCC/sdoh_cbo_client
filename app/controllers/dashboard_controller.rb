@@ -1,11 +1,6 @@
 class DashboardController < ApplicationController
   before_action :require_fhir_client, :set_tasks
 
-  # GET /dashboard
-  def main
-    @active_tab = active_tab
-  end
-
   private
 
   # Getting all resources associated with the given patient
@@ -17,7 +12,13 @@ class DashboardController < ApplicationController
       @completed_tasks = result["completed"] || []
       @cancelled_tasks = result["cancelled"] || []
     else
-      flash[:warning] = result
+      # The server we are pointed at could not be read. Render the dashboard
+      # with empty tables and say why, so the user can log out and pick another
+      # server instead of being stuck on an error page.
+      @active_tasks = []
+      @completed_tasks = []
+      @cancelled_tasks = []
+      flash.now[:warning] = result
     end
   end
 end
