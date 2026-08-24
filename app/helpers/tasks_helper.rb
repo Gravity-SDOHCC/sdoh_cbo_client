@@ -37,6 +37,18 @@ module TasksHelper
     end
   end
 
+  # The program and enrollment status lists offered by the accepted-task modal.
+  # They belong to TasksController, which is what writes the Observation, and
+  # the modal is rendered from the dashboard, so a helper is how the view reaches
+  # them instead of a second copy drifting out of step with the writer.
+  def enrollment_programs
+    TasksController::ENROLLMENT_PROGRAMS
+  end
+
+  def enrollment_statuses
+    TasksController::ENROLLMENT_STATUSES
+  end
+
   private
 
   def group_tasks(tasks)

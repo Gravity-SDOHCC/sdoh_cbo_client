@@ -14,6 +14,8 @@ module FhirProfiles
   TASK_FOR_REFERRAL_MANAGEMENT = "http://hl7.org/fhir/us/sdoh-clinicalcare/StructureDefinition/SDOHCC-TaskForReferralManagement".freeze
   # SDOHCC Procedure
   PROCEDURE = "http://hl7.org/fhir/us/sdoh-clinicalcare/StructureDefinition/SDOHCC-Procedure".freeze
+  # SDOHCC Observation Program Enrollment Status
+  OBSERVATION_PROGRAM_ENROLLMENT_STATUS = "http://hl7.org/fhir/us/sdoh-clinicalcare/StructureDefinition/SDOHCC-ObservationProgramEnrollmentStatus".freeze
 
   # --- SDOH Clinical Care extensions ---
 
@@ -31,4 +33,24 @@ module FhirProfiles
   ADDITIONAL_CONTENT_DISPLAY = "Additional Content".freeze
   RESULTING_ACTIVITY_CODE = "resulting-activity".freeze
   RESULTING_ACTIVITY_DISPLAY = "Resulting Activity".freeze
+
+  # SDOHCC-CodeSystemTemporaryCodes concept for Observation.category on
+  # SDOHCC-ObservationProgramEnrollmentStatus, which fixes category[enrollment]
+  # to program-enrollment. The category is what tells an enrollment status
+  # Observation apart from the assessments, goals and conditions that share the
+  # Task.output:AdditionalContent slice.
+  PROGRAM_ENROLLMENT_CATEGORY_CODE = "program-enrollment".freeze
+  PROGRAM_ENROLLMENT_CATEGORY_DISPLAY = "Program Enrollment Status".freeze
+
+  # --- Terminology from outside this IG ---
+
+  # US Core category code system. category[us-core] on the enrollment profile is
+  # 1..* and has to include sdoh (constraint SDOH-Obs-4).
+  US_CORE_CATEGORY_SYSTEM = "http://hl7.org/fhir/us/core/CodeSystem/us-core-category".freeze
+  SDOH_CATEGORY_CODE = "sdoh".freeze
+  SDOH_CATEGORY_DISPLAY = "SDOH".freeze
+
+  # SNOMED CT: the code system the social care program concepts bound to
+  # Observation.code are drawn from.
+  SNOMED_CT_SYSTEM = "http://snomed.info/sct".freeze
 end

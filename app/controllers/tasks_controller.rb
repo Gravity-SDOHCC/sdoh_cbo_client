@@ -1,6 +1,45 @@
 class TasksController < ApplicationController
   before_action :require_fhir_client
 
+  # Observation.value[x] on SDOHCC-ObservationProgramEnrollmentStatus, bound
+  # (preferred) to SDOHCC-ValueSetEnrollmentStatus. All three concepts come from
+  # SDOHCC-CodeSystemTemporaryCodes.
+  #
+  # not-enrolled-on-waitlist says THIS PERSON is waiting for a place in the
+  # program. It is not the capacity code waitlist, which says THIS PROGRAM has a
+  # waitlist: different value set, different meaning, same code system.
+  ENROLLMENT_STATUSES = {
+    "enrolled" => "Enrolled",
+    "not-enrolled" => "Not Enrolled",
+    "not-enrolled-on-waitlist" => "Not Enrolled - On Waitlist",
+  }.freeze
+
+  # Observation.code identifies the social care program. It is bound
+  # (preferred) to the VSAC value set
+  # http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113762.1.4.1247.312, whose
+  # expansion needs UMLS credentials and is not reachable from this client:
+  # there is no terminology service here either. This is the one concept the
+  # IG's own enrollment status example uses, and the binding is preferred, so
+  # adding a program the connectathon needs is a one-line change.
+  ENROLLMENT_PROGRAMS = {
+    "481021000124104" => "Adult protective service (qualifier value)",
+  }.freeze
+
+  # SDOHCC-ValueSetSDOHCategory, the required binding on category[SDOHCC].
+  # The domain code is copied from the ServiceRequest being fulfilled rather
+  # than asked for again, and it is checked against the value set first: a
+  # ServiceRequest category carrying some other temporary code (a capacity or
+  # enrollment code, say) would otherwise fail the binding on the way out.
+  SDOH_DOMAIN_CATEGORY_CODES = %w[
+    sdoh-category-unspecified food-insecurity housing-instability homelessness
+    inadequate-housing transportation-insecurity financial-insecurity
+    material-hardship educational-attainment employment-status veteran-status
+    stress social-connection intimate-partner-violence elder-abuse
+    personal-health-literacy health-insurance-coverage-status
+    medical-cost-burden digital-literacy digital-access utility-insecurity
+    incarceration-status language-access protective-factor
+  ].freeze
+
   def update_task
     cached_tasks = Rails.cache.read(tasks_key)
     client = get_fhir_client
@@ -17,8 +56,15 @@ class TasksController < ApplicationController
           task.statusReason = { text: params[:status_reason] }
           client.update(task, task.id)
         elsif status == "completed"
+          # Both resources are created before the Task is updated. A referral
+          # completed with no outcome on it cannot be corrected from this UI, so
+          # a failed create has to leave the Task where it was and say why.
+          observation = create_enrollment_observation(task, service_request)
           procedure = create_procedure(task, service_request)
           append_output(task, type_code: FhirProfiles::RESULTING_ACTIVITY_CODE, reference: "Procedure/#{procedure.id}")
+          if observation.present?
+            append_output(task, type_code: FhirProfiles::ADDITIONAL_CONTENT_CODE, reference: "Observation/#{observation.id}")
+          end
           client.update(task, task.id)
         end
 
@@ -88,6 +134,111 @@ class TasksController < ApplicationController
   end
 
   private
+
+  # SDOHCC Observation Program Enrollment Status: the CBO's record of what
+  # enrolling this patient in a social care program came to.
+  #
+  # enrollment.html, referral-triggered workflow: "If the CBO determines the
+  # person needs to be enrolled in a program, the CBO creates a new Enrollment
+  # Status Observation ... To close the loop on the referral, the CBO updates
+  # the Task, pointing to the Enrollment Status Observation in Task.output."
+  # The CBO is the Referral Target, so this client is the one that writes it.
+  #
+  # Enrollment is not part of every referral, so no status selected means no
+  # Observation and a referral that completes with only its Procedure, exactly
+  # as before.
+  def create_enrollment_observation(task, service_request)
+    status_code = params[:enrollment_status].presence
+    return if status_code.blank?
+
+    unless ENROLLMENT_STATUSES.key?(status_code)
+      raise ArgumentError, "#{status_code} is not an SDOHCC-ValueSetEnrollmentStatus code"
+    end
+
+    program_code = params[:enrollment_program].presence
+    raise ArgumentError, "Select the program the enrollment status is for" if program_code.blank?
+    unless ENROLLMENT_PROGRAMS.key?(program_code)
+      raise ArgumentError, "#{program_code} is not one of the programs this client can record"
+    end
+
+    observation = FHIR::Observation.new
+    observation.meta = {
+      "profile": [
+        FhirProfiles::OBSERVATION_PROGRAM_ENROLLMENT_STATUS,
+      ],
+    }
+    observation.status = "final"
+    observation.category = enrollment_categories(service_request)
+    observation.code = {
+      "coding": [
+        {
+          "system": FhirProfiles::SNOMED_CT_SYSTEM,
+          "code": program_code,
+          "display": ENROLLMENT_PROGRAMS[program_code],
+        },
+      ],
+    }
+    observation.subject = task.for.presence || service_request.subject
+    observation.performer = [{ "reference": "Organization/#{get_my_org_id}" }]
+    observation.effectiveDateTime = Time.now.utc.iso8601
+    observation.valueCodeableConcept = {
+      "coding": [
+        {
+          "system": FhirProfiles::TEMPORARY_CODE_SYSTEM,
+          "code": status_code,
+          "display": ENROLLMENT_STATUSES[status_code],
+        },
+      ],
+    }
+    note = params[:enrollment_note].presence
+    observation.note = [{ "text": note }] if note
+
+    created = get_fhir_client.create(observation).resource
+    if created.blank? || created.id.blank?
+      raise "The FHIR server did not return a created Enrollment Status Observation"
+    end
+
+    created
+  end
+
+  # category[us-core] sdoh and category[enrollment] program-enrollment are both
+  # fixed by the profile; the SDOH domain code comes from the referral.
+  def enrollment_categories(service_request)
+    categories = [
+      {
+        "coding": [
+          {
+            "system": FhirProfiles::US_CORE_CATEGORY_SYSTEM,
+            "code": FhirProfiles::SDOH_CATEGORY_CODE,
+            "display": FhirProfiles::SDOH_CATEGORY_DISPLAY,
+          },
+        ],
+      },
+      {
+        "coding": [
+          {
+            "system": FhirProfiles::TEMPORARY_CODE_SYSTEM,
+            "code": FhirProfiles::PROGRAM_ENROLLMENT_CATEGORY_CODE,
+            "display": FhirProfiles::PROGRAM_ENROLLMENT_CATEGORY_DISPLAY,
+          },
+        ],
+      },
+    ]
+
+    sdoh_domain_codings(service_request).each do |coding|
+      categories << { "coding": [coding] }
+    end
+
+    categories
+  end
+
+  def sdoh_domain_codings(service_request)
+    Array(service_request&.category).flat_map { |category| Array(category.coding) }
+      .select { |coding| coding.system == FhirProfiles::TEMPORARY_CODE_SYSTEM }
+      .select { |coding| SDOH_DOMAIN_CATEGORY_CODES.include?(coding.code) }
+      .uniq(&:code)
+      .map { |coding| { "system": coding.system, "code": coding.code, "display": coding.display }.compact }
+  end
 
   def create_procedure(task, service_request)
     procedure = FHIR::Procedure.new
