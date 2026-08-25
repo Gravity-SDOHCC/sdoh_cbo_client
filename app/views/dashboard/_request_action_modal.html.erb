@@ -83,33 +83,48 @@
                 <%# authoring assessment content in this client is a follow-on. %>
                 <div class="assessment-findings-container" style="display:none;"
                      data-task-action-target="findingsContainer">
-                  <% findings = assessment_findings(resource.patient_id) %>
+                  <% findings = assessment_findings(resource.patient_id, resource.focus&.sdoh_category_codes) %>
                   <div class="label-value">
                     <span class="fw-semibold">Assessment findings:</span>
                     <span class="small-text text-muted">
                       returned with the referral in Task.output
                     </span>
                   </div>
-                  <% if findings.present? %>
-                    <div class="border rounded p-2" style="max-height: 11rem; overflow-y: auto;">
-                      <% findings.each do |finding| %>
-                        <% field_id = "finding-#{resource.id}-#{finding.resource_type}-#{finding.id}" %>
-                        <div class="form-check text-start">
-                          <input class="form-check-input" type="checkbox" name="findings[]"
-                                 value="<%= finding.reference %>" id="<%= field_id %>">
-                          <label class="form-check-label small-text" for="<%= field_id %>">
-                            <span class="badge <%= finding_badge_class(finding.resource_type) %>"><%= finding.resource_type %></span>
-                            <%= finding.label %>
-                            <% if finding.last_updated.present? %>
-                              <span class="text-muted">(<%= finding.last_updated %>)</span>
-                            <% end %>
-                          </label>
-                        </div>
+                  <% if findings&.any? %>
+                    <div class="border rounded p-2" style="max-height: 14rem; overflow-y: auto;">
+                      <% findings.groups.each do |group| %>
+                        <div class="fw-semibold small-text text-muted mt-1"><%= group[:label] %></div>
+                        <% group[:rows].each do |row| %>
+                          <%= render "dashboard/finding_check_box", finding: row[:finding], task_id: resource.id %>
+                          <%# The answers an instrument was scored from hang under %>
+                          <%# it through Observation.derivedFrom, collapsed: the %>
+                          <%# referral target returns the instrument, and the %>
+                          <%# sixteen Observations behind it are there to be seen %>
+                          <%# rather than ticked one by one. %>
+                          <% if row[:answers].present? %>
+                            <details class="ms-4">
+                              <summary class="small-text text-muted">
+                                <%= pluralize(row[:answers].size, "individual answer") %> recorded as Observations
+                              </summary>
+                              <% row[:answers].each do |answer| %>
+                                <%= render "dashboard/finding_check_box", finding: answer, task_id: resource.id %>
+                              <% end %>
+                            </details>
+                          <% end %>
+                        <% end %>
                       <% end %>
                     </div>
+                    <% if findings.truncated_types.present? %>
+                      <span class="small-text text-muted">
+                        Showing the <%= AssessmentFindings::PAGE_SIZE %> most recent
+                        <%= findings.truncated_types.to_sentence %> records; older ones are not listed.
+                      </span>
+                    <% end %>
                   <% else %>
                     <span class="small-text text-muted">
-                      Nothing on this server for <%= resource.patient_name || "this patient" %> to attach.
+                      No questionnaire responses, assessments, health concerns or goals are recorded
+                      on this server for <%= resource.patient_name || "this patient" %>, so there is
+                      nothing to return with the referral.
                     </span>
                   <% end %>
                 </div>

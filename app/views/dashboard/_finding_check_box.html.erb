@@ -1,0 +1,27 @@
+<%# One candidate row: kind badge, what it says, its SDOH domains and its date. %>
+<%# Rendered for both a finding and, indented, the individual answers an %>
+<%# instrument was scored from. %>
+<% field_id = "finding-#{task_id}-#{finding.resource_type}-#{finding.id}" %>
+<div class="form-check text-start">
+  <input class="form-check-input" type="checkbox" name="findings[]"
+         value="<%= finding.reference %>" id="<%= field_id %>">
+  <label class="form-check-label small-text" for="<%= field_id %>">
+    <span class="badge <%= finding.badge_class %>"><%= finding.badge_label %></span>
+    <%= finding.label %>
+    <% if finding.detail.present? %>
+      <span class="text-muted">— <%= finding.detail %></span>
+    <% end %>
+    <% finding.domains.each do |domain| %>
+      <span class="badge rounded-pill bg-light text-dark border"><%= sdoh_domain_label(domain) %></span>
+    <% end %>
+    <% if finding.recorded_on.present? %>
+      <span class="text-muted">(<%= finding.recorded_on %>)</span>
+    <% end %>
+    <% if finding.duplicated? %>
+      <span class="badge rounded-pill bg-warning text-dark"
+            title="<%= finding.duplicate_count %> resources on this server are identical here; the most recent one is attached">
+        &times;<%= finding.duplicate_count %>
+      </span>
+    <% end %>
+  </label>
+</div>

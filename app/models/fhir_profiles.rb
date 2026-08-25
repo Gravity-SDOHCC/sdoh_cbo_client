@@ -17,6 +17,30 @@ module FhirProfiles
   # SDOHCC Observation Program Enrollment Status
   OBSERVATION_PROGRAM_ENROLLMENT_STATUS = "http://hl7.org/fhir/us/sdoh-clinicalcare/StructureDefinition/SDOHCC-ObservationProgramEnrollmentStatus".freeze
 
+  # The profiles Task.output:AdditionalContent.valueReference is closed to:
+  # Reference(SDOHCC Observation Program Enrollment Status | SDOHCC Observation
+  # Assessment | SDOHCC Observation Screening Response | SDOHCC Goal | SDOHCC
+  # Condition | QuestionnaireResponse | CarePlan).
+  OBSERVATION_ASSESSMENT = "http://hl7.org/fhir/us/sdoh-clinicalcare/StructureDefinition/SDOHCC-ObservationAssessment".freeze
+  OBSERVATION_SCREENING_RESPONSE = "http://hl7.org/fhir/us/sdoh-clinicalcare/StructureDefinition/SDOHCC-ObservationScreeningResponse".freeze
+  CONDITION = "http://hl7.org/fhir/us/sdoh-clinicalcare/StructureDefinition/SDOHCC-Condition".freeze
+  GOAL = "http://hl7.org/fhir/us/sdoh-clinicalcare/StructureDefinition/SDOHCC-Goal".freeze
+
+  # The personal-characteristic Observation profiles, which that slice does NOT
+  # accept. They are a patient's race, ethnicity, gender identity, pronouns,
+  # sexual orientation and recorded sex — never a finding of an assessment, and
+  # returning one to a referral source would both be non-conformant and disclose
+  # something nobody asked about.
+  OBSERVATION_PERSONAL_CHARACTERISTIC_PROFILES = [
+    "http://hl7.org/fhir/us/sdoh-clinicalcare/StructureDefinition/SDOHCC-ObservationPersonalCharacteristic",
+    "http://hl7.org/fhir/us/sdoh-clinicalcare/StructureDefinition/SDOHCC-ObservationRaceOMB",
+    "http://hl7.org/fhir/us/sdoh-clinicalcare/StructureDefinition/SDOHCC-ObservationEthnicityOMB",
+    "http://hl7.org/fhir/us/sdoh-clinicalcare/StructureDefinition/SDOHCC-ObservationGenderIdentity",
+    "http://hl7.org/fhir/us/sdoh-clinicalcare/StructureDefinition/SDOHCC-ObservationPersonalPronouns",
+    "http://hl7.org/fhir/us/sdoh-clinicalcare/StructureDefinition/SDOHCC-ObservationSexualOrientation",
+    "http://hl7.org/fhir/us/sdoh-clinicalcare/StructureDefinition/SDOHCC-ObservationRecordedSexGender",
+  ].freeze
+
   # --- SDOH Clinical Care extensions ---
 
   # SDOHCC Extension Healthcare Service Capacity Status
@@ -49,6 +73,11 @@ module FhirProfiles
   US_CORE_CATEGORY_SYSTEM = "http://hl7.org/fhir/us/core/CodeSystem/us-core-category".freeze
   SDOH_CATEGORY_CODE = "sdoh".freeze
   SDOH_CATEGORY_DISPLAY = "SDOH".freeze
+
+  # Observation.category on every personal-characteristic profile. Nothing else
+  # in this IG uses it, so it identifies those Observations without depending on
+  # meta.profile being present.
+  PERSONAL_CHARACTERISTIC_CATEGORY_CODE = "personal-characteristic".freeze
 
   # SNOMED CT: the code system the social care program concepts bound to
   # Observation.code are drawn from.

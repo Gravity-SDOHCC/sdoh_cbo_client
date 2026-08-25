@@ -375,6 +375,10 @@ class TasksController < ApplicationController
       finding = read_finding(resource_type, resource_id)
       raise ArgumentError, "#{reference} was not found on the FHIR server" if finding.blank?
 
+      if personal_characteristic?(finding)
+        raise ArgumentError, "#{reference} is a personal characteristic, which Task.output:AdditionalContent does not accept"
+      end
+
       subject_id = finding.subject&.reference_id
       unless subject_id == patient_id
         raise ArgumentError, "#{reference} belongs to #{subject_id.presence || "no patient"}, not to this referral's patient"
@@ -384,6 +388,21 @@ class TasksController < ApplicationController
     end
 
     Rails.cache.delete(findings_key(patient_id))
+  end
+
+  # The slice accepts three Observation profiles and none of the six
+  # personal-characteristic ones, so "it is an Observation" is not enough to let
+  # one through. The picker no longer offers them, and this is the half that
+  # matters: the status form is a GET, so what the picker shows and what Submit
+  # accepts have to be narrowed together.
+  def personal_characteristic?(fhir_resource)
+    return false unless fhir_resource.is_a?(FHIR::Observation)
+
+    profiles = Array(fhir_resource.meta&.profile).map(&:to_s)
+    return true if (profiles & FhirProfiles::OBSERVATION_PERSONAL_CHARACTERISTIC_PROFILES).any?
+
+    Array(fhir_resource.category).flat_map { |category| Array(category&.coding) }
+      .any? { |coding| coding&.code == FhirProfiles::PERSONAL_CHARACTERISTIC_CATEGORY_CODE }
   end
 
   def read_finding(resource_type, resource_id)
