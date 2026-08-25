@@ -272,10 +272,25 @@ class TasksController < ApplicationController
     procedure.category = service_request.category&.first
     procedure.code = service_request.code
     procedure.subject = service_request.subject
-    procedure.reasonReference = service_request.reasonReference
+    procedure.reasonReference = referenceable(service_request.reasonReference)
     procedure.performedDateTime = Time.now.utc.strftime("%Y-%m-%d")
 
     get_fhir_client.create(procedure).resource
+  end
+
+  # Drops references that name no resource.
+  #
+  # "Condition/" is not a reference, and copying one onto the Procedure makes
+  # the FHIR server reject the whole resource: HAPI-0508 "Invalid resource
+  # reference found at path[Procedure.reasonReference] - Does not contain
+  # resource ID". The referral source client writes exactly that whenever a
+  # referral is created with no problem selected, and the coordination platform
+  # copies the ServiceRequest through unchanged, so a referral carrying one
+  # could not be completed at all: the create failed, and fhir_client reported
+  # it as "undefined method `each_element' for Hash" rather than as the 400 it
+  # was.
+  def referenceable(references)
+    Array(references).select { |reference| TaskIoEntry.parse_reference(reference.reference).last.present? }.presence
   end
 
   # Adds one entry to Task.output.
