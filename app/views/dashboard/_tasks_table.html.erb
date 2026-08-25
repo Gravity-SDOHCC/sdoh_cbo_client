@@ -117,7 +117,8 @@
                           <%= render "dashboard/procedure_modal", resource: output.resource %>
                         <% end %>
                       <% else %>
-                        <%= link_to "#{output.type_display} (#{output.resource_type})", "#fhir-resource-modal-#{output.id}", data: { bs_toggle: "modal" } %>
+                        <%# Name the resource, not the slice it arrived in. %>
+                        <%= link_to "#{output.resource_label.presence || output.type_display} (#{output.resource_type})", "#fhir-resource-modal-#{output.id}", data: { bs_toggle: "modal" } %>
                         <% content_for :modals do %>
                           <%= render "shared/fhir_resource_modal", resource: output.resource.fhir_resource %>
                         <% end %>
