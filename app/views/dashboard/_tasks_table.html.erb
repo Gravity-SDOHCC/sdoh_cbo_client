@@ -112,7 +112,7 @@
                       <% if output.resource.blank? %>
                         <span class="small-text"><%= [output.type_display, output.value].compact.join(": ") %></span>
                       <% elsif output.resource_type == "Procedure" %>
-                        <%= link_to output.type_display, "#referral-procedure-modal-#{output.id}", data: { bs_toggle: "modal" } %>
+                        <%= link_to "#{output.resource_label.presence || output.type_display} (#{output.resource_type})", "#referral-procedure-modal-#{output.id}", data: { bs_toggle: "modal" } %>
                         <% content_for :modals do %>
                           <%= render "dashboard/procedure_modal", resource: output.resource %>
                         <% end %>
