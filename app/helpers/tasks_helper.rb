@@ -69,6 +69,41 @@ module TasksHelper
     end
   end
 
+  # Badge colours for the resource types Task.output:AdditionalContent may point
+  # at, so a returned QuestionnaireResponse reads differently from a Condition.
+  FINDING_BADGE_CLASSES = {
+    "QuestionnaireResponse" => "bg-info text-dark",
+    "Observation" => "bg-secondary",
+    "Condition" => "bg-danger",
+    "Goal" => "bg-success",
+    "CarePlan" => "bg-dark",
+  }.freeze
+
+  def finding_badge_class(resource_type)
+    FINDING_BADGE_CLASSES.fetch(resource_type, "bg-light text-dark border")
+  end
+
+  # The assessment findings already on the server for this referral's patient,
+  # offered by the completion modal so this client can return them in
+  # Task.output:AdditionalContent.
+  #
+  # Cached per patient: the dashboard polls every 30 seconds and re-renders every
+  # modal, so without this it would be one search per resource type per task per
+  # poll. Only the modal that offers "completed" asks for findings, which keeps
+  # the searches to accepted and in-progress referrals rather than the whole
+  # table.
+  def assessment_findings(patient_id)
+    return [] if patient_id.blank?
+
+    Rails.cache.fetch(findings_key(patient_id), expires_in: 5.minutes) do
+      TasksController::ASSESSMENT_FINDING_TYPES.flat_map { |type| search_findings(type, patient_id) }
+    end
+  end
+
+  def findings_key(patient_id)
+    "#{session_id}_findings_#{patient_id}"
+  end
+
   # The program and enrollment status lists offered by the accepted-task modal.
   # They belong to TasksController, which is what writes the Observation, and
   # the modal is rendered from the dashboard, so a helper is how the view reaches
@@ -96,6 +131,31 @@ module TasksHelper
 
     body = body.to_s
     body.length > MAX_ERROR_BODY_LENGTH ? "#{body[0, MAX_ERROR_BODY_LENGTH]}..." : body
+  end
+
+  # One patient-scoped search per resource type. The most recent 25 of each are
+  # offered; a referral target returning findings is picking something it just
+  # recorded, not trawling a lifetime of records.
+  #
+  # A type the server does not implement is not an error here: the shared EHR
+  # server answers CarePlan with HAPI-0302 "Unknown resource type", so CarePlan
+  # simply contributes nothing to the picker there while staying valid in
+  # Task.output:AdditionalContent for a server that does support it.
+  def search_findings(resource_type, patient_id)
+    fhir_class = FHIR.const_get(resource_type, false)
+    response = get_fhir_client.search(
+      fhir_class,
+      search: { parameters: { patient: patient_id, _sort: "-_lastUpdated", _count: 25 } },
+    )
+    if response.response[:code].to_i != 200
+      Rails.logger.info("No #{resource_type} findings for patient #{patient_id}: server answered #{response.response[:code]}")
+      return []
+    end
+
+    Array(response.resource&.entry).filter_map { |entry| Finding.build(entry.resource) }
+  rescue StandardError => e
+    Rails.logger.warn("Unable to search #{resource_type} for patient #{patient_id}: #{e.message}")
+    []
   end
 
   def group_tasks(tasks)

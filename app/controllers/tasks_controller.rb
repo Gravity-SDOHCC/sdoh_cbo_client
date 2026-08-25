@@ -25,6 +25,21 @@ class TasksController < ApplicationController
     "481021000124104" => "Adult protective service (qualifier value)",
   }.freeze
 
+  # What Task.output:AdditionalContent is allowed to reference.
+  #
+  # SDOHCC-TaskForReferralManagement closes the slice to
+  # Reference(SDOHCC Observation Program Enrollment Status |
+  # SDOHCC Observation Assessment | SDOHCC Observation Screening Response |
+  # SDOHCC Goal | SDOHCC Condition | QuestionnaireResponse | CarePlan), which is
+  # these five resource types.
+  #
+  # Procedure is deliberately absent. rffa.html lists Procedures among the
+  # results of an assessment, but the profile keeps them in
+  # Task.output:PerformedActivityReference, whose target is closed to
+  # Reference(SDOHCC Procedure) -- so the Procedure this client already creates
+  # on completion stays where it is and nothing else goes there.
+  ASSESSMENT_FINDING_TYPES = %w[QuestionnaireResponse Observation Condition Goal CarePlan].freeze
+
   # SDOHCC-ValueSetSDOHCategory, the required binding on category[SDOHCC].
   # The domain code is copied from the ServiceRequest being fulfilled rather
   # than asked for again, and it is checked against the value set first: a
@@ -65,6 +80,7 @@ class TasksController < ApplicationController
           if observation.present?
             append_output(task, type_code: FhirProfiles::ADDITIONAL_CONTENT_CODE, reference: "Observation/#{observation.id}")
           end
+          attach_assessment_findings(task)
           client.update(task, task.id)
         end
 
@@ -308,6 +324,62 @@ class TasksController < ApplicationController
 
     task.output = Array(task.output) + [output]
     task
+  end
+
+  # Returns the assessment findings selected in the completion modal through
+  # Task.output:AdditionalContent.
+  #
+  # rffa.html: the referral for further assessment reuses the closed-loop
+  # pattern unchanged, and what differs is that "when the loop is closed, the
+  # information returned in Task.output consists of the findings from that
+  # assessment". This client is the Referral Target, so it is the one that
+  # returns them.
+  #
+  # This attaches findings that already exist on the server. Authoring
+  # assessment content here -- an Observation Assessment builder, a CarePlan --
+  # is a follow-on.
+  #
+  # The status form is a GET, so every selection is checked before it is
+  # trusted: the resource type has to be one the slice accepts, the resource has
+  # to exist, and it has to belong to this referral's patient. Without the last
+  # check a hand-edited query string could attach one patient's records to
+  # another patient's referral.
+  def attach_assessment_findings(task)
+    references = Array(params[:findings]).map(&:to_s).reject(&:blank?).uniq
+    return if references.empty?
+
+    patient_id = task.for&.reference_id
+    raise ArgumentError, "This referral names no patient, so findings cannot be checked against it" if patient_id.blank?
+
+    references.each do |reference|
+      resource_type, resource_id = TaskIoEntry.parse_reference(reference)
+      unless ASSESSMENT_FINDING_TYPES.include?(resource_type) && resource_id.present?
+        raise ArgumentError, "#{reference} is not a kind of assessment finding Task.output:AdditionalContent accepts"
+      end
+
+      finding = read_finding(resource_type, resource_id)
+      raise ArgumentError, "#{reference} was not found on the FHIR server" if finding.blank?
+
+      subject_id = finding.subject&.reference_id
+      unless subject_id == patient_id
+        raise ArgumentError, "#{reference} belongs to #{subject_id.presence || "no patient"}, not to this referral's patient"
+      end
+
+      append_output(task, type_code: FhirProfiles::ADDITIONAL_CONTENT_CODE, reference: "#{resource_type}/#{resource_id}")
+    end
+
+    Rails.cache.delete(findings_key(patient_id))
+  end
+
+  def read_finding(resource_type, resource_id)
+    fhir_class = FHIR.const_get(resource_type, false)
+    resource = get_fhir_client.read(fhir_class, resource_id).resource
+    # sometimes for some reason read returns FHIR::Bundle
+    resource = resource&.entry&.first&.resource if resource.is_a?(FHIR::Bundle)
+    resource.is_a?(fhir_class) ? resource : nil
+  rescue StandardError => e
+    Rails.logger.warn("Unable to read #{resource_type}/#{resource_id}: #{e.message}")
+    nil
   end
 
   def auto_reject_at_capacity(tasks)

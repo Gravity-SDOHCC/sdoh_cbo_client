@@ -2,8 +2,8 @@ class Task
   include ModelHelper
 
   attr_reader :id, :status, :focus, :owner_reference, :owner_name, :requester_name,
-              :requester_resource, :patient_name, :patient_resource, :outputs, :inputs,
-              :consent, :authored_on, :status_reason, :fhir_resource
+              :requester_resource, :patient_id, :patient_name, :patient_resource,
+              :outputs, :inputs, :consent, :authored_on, :status_reason, :fhir_resource
 
   def initialize(fhir_task, fhir_client)
     @id = fhir_task.id
@@ -28,6 +28,7 @@ class Task
     @consent = get_consent(@focus&.fhir_resource, fhir_client)
     @authored_on = fhir_task.authoredOn&.to_date
     @status_reason = fhir_task.statusReason&.text
+    @patient_id = fhir_task.for&.reference_id
     @patient_name = fhir_task.for&.display
     @patient_resource = get_fhir_resource(FHIR::Patient, fhir_task.for, fhir_client)
     remove_client_instances(@patient_resource)
