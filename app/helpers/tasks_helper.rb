@@ -149,4 +149,29 @@ module TasksHelper
       },
     }
   end
+
+  # "39y · male · b. Feb 20, 1987" - what a referral target needs to
+  # identify the person, from US Core Patient.
+  def patient_summary(fhir_patient)
+    birth_date = parse_birth_date(fhir_patient&.birthDate)
+    parts = []
+    parts << "#{age_in_years(birth_date)}y" if birth_date
+    parts << fhir_patient.gender if fhir_patient&.gender.present?
+    parts << "b. #{birth_date.strftime("%b %-d, %Y")}" if birth_date
+    parts.join(" · ")
+  end
+
+  def parse_birth_date(value)
+    Date.parse(value.to_s)
+  rescue ArgumentError, TypeError
+    nil
+  end
+
+  def age_in_years(birth_date)
+    today = Date.current
+    age = today.year - birth_date.year
+    age -= 1 if ([today.month, today.day] <=> [birth_date.month, birth_date.day]) == -1
+    age
+  end
+
 end

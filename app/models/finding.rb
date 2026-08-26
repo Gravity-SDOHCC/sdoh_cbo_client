@@ -114,7 +114,13 @@ class Finding
       when FHIR::Goal then codeable_text(fhir_resource.description)
       when FHIR::CarePlan then fhir_resource.title.presence || codeable_text(fhir_resource.category&.first)
       when FHIR::QuestionnaireResponse then questionnaire_label(fhir_resource, questionnaire_titles)
-      else codeable_text(fhir_resource.code)
+      when FHIR::Consent then codeable_text(Array(fhir_resource.category).first)
+      when FHIR::DocumentReference then fhir_resource.description.presence || codeable_text(fhir_resource.type)
+      else
+        # Task.input:AdditionalContent is Reference(Resource) with no
+        # targetProfile, so this now sees types the output slice never carried -
+        # and FHIR::Consent has category, scope and provision but no code.
+        codeable_text(fhir_resource.code) if fhir_resource.respond_to?(:code)
       end
 
     text.presence || reference
@@ -126,6 +132,7 @@ class Finding
   def questionnaire_label(fhir_resource, questionnaire_titles)
     canonical = fhir_resource.questionnaire.to_s
     questionnaire_titles[canonical.split("|").first].presence ||
+      canonical.split("/").reject(&:blank?).last.to_s.sub(/\ASDOHCC-Questionnaire/, "").presence ||
       canonical.split("/").reject(&:blank?).last
   end
 

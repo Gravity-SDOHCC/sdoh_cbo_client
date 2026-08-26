@@ -106,6 +106,9 @@
               </td>
               <td>
                 <%= render "dashboard/task_attachments", referral: referral %>
+                <% content_for :modals do %>
+                  <%= render "dashboard/referral_detail", referral: referral %>
+                <% end %>
               </td>
               <td>
                 <% if type == "completed" %>

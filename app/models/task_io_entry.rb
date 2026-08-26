@@ -222,6 +222,7 @@ class TaskIoEntry
   def wrap(fhir_resource)
     case resource_type
     when "Procedure" then Procedure.new(fhir_resource)
+    when "QuestionnaireResponse" then QuestionnaireResponse.new(fhir_resource)
     else GenericResource.new(fhir_resource)
     end
   end
