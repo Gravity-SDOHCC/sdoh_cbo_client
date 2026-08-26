@@ -68,7 +68,7 @@ class TasksController < ApplicationController
         if status == "accepted" || status == "in-progress"
           client.update(task, task.id)
         elsif status == "rejected" || status == "cancelled"
-          task.statusReason = { text: params[:status_reason] }
+          task.statusReason = FHIR::CodeableConcept.new(text: params[:status_reason])
           client.update(task, task.id)
         elsif status == "completed"
           # Both resources are created before the Task is updated. A referral
@@ -180,36 +180,32 @@ class TasksController < ApplicationController
     end
 
     observation = FHIR::Observation.new
-    observation.meta = {
-      "profile": [
-        FhirProfiles::OBSERVATION_PROGRAM_ENROLLMENT_STATUS,
-      ],
-    }
+    observation.meta = FHIR::Meta.new(profile: [FhirProfiles::OBSERVATION_PROGRAM_ENROLLMENT_STATUS])
     observation.status = "final"
     observation.category = enrollment_categories(service_request)
-    observation.code = {
-      "coding": [
-        {
-          "system": FhirProfiles::SNOMED_CT_SYSTEM,
-          "code": program_code,
-          "display": ENROLLMENT_PROGRAMS[program_code],
-        },
+    observation.code = FHIR::CodeableConcept.new(
+      coding: [
+        FHIR::Coding.new(
+          system: FhirProfiles::SNOMED_CT_SYSTEM,
+          code: program_code,
+          display: ENROLLMENT_PROGRAMS[program_code],
+        ),
       ],
-    }
+    )
     observation.subject = task.for.presence || service_request.subject
-    observation.performer = [{ "reference": "Organization/#{get_my_org_id}" }]
+    observation.performer = [FHIR::Reference.new(reference: "Organization/#{get_my_org_id}")]
     observation.effectiveDateTime = Time.now.utc.iso8601
-    observation.valueCodeableConcept = {
-      "coding": [
-        {
-          "system": FhirProfiles::TEMPORARY_CODE_SYSTEM,
-          "code": status_code,
-          "display": ENROLLMENT_STATUSES[status_code],
-        },
+    observation.valueCodeableConcept = FHIR::CodeableConcept.new(
+      coding: [
+        FHIR::Coding.new(
+          system: FhirProfiles::TEMPORARY_CODE_SYSTEM,
+          code: status_code,
+          display: ENROLLMENT_STATUSES[status_code],
+        ),
       ],
-    }
+    )
     note = params[:enrollment_note].presence
-    observation.note = [{ "text": note }] if note
+    observation.note = [FHIR::Annotation.new(text: note)] if note
 
     created = get_fhir_client.create(observation).resource
     if created.blank? || created.id.blank?
@@ -223,28 +219,28 @@ class TasksController < ApplicationController
   # fixed by the profile; the SDOH domain code comes from the referral.
   def enrollment_categories(service_request)
     categories = [
-      {
-        "coding": [
-          {
-            "system": FhirProfiles::US_CORE_CATEGORY_SYSTEM,
-            "code": FhirProfiles::SDOH_CATEGORY_CODE,
-            "display": FhirProfiles::SDOH_CATEGORY_DISPLAY,
-          },
+      FHIR::CodeableConcept.new(
+        coding: [
+          FHIR::Coding.new(
+            system: FhirProfiles::US_CORE_CATEGORY_SYSTEM,
+            code: FhirProfiles::SDOH_CATEGORY_CODE,
+            display: FhirProfiles::SDOH_CATEGORY_DISPLAY,
+          ),
         ],
-      },
-      {
-        "coding": [
-          {
-            "system": FhirProfiles::TEMPORARY_CODE_SYSTEM,
-            "code": FhirProfiles::PROGRAM_ENROLLMENT_CATEGORY_CODE,
-            "display": FhirProfiles::PROGRAM_ENROLLMENT_CATEGORY_DISPLAY,
-          },
+      ),
+      FHIR::CodeableConcept.new(
+        coding: [
+          FHIR::Coding.new(
+            system: FhirProfiles::TEMPORARY_CODE_SYSTEM,
+            code: FhirProfiles::PROGRAM_ENROLLMENT_CATEGORY_CODE,
+            display: FhirProfiles::PROGRAM_ENROLLMENT_CATEGORY_DISPLAY,
+          ),
         ],
-      },
+      ),
     ]
 
     sdoh_domain_codings(service_request).each do |coding|
-      categories << { "coding": [coding] }
+      categories << FHIR::CodeableConcept.new(coding: [coding])
     end
 
     categories
@@ -255,19 +251,13 @@ class TasksController < ApplicationController
       .select { |coding| coding.system == FhirProfiles::TEMPORARY_CODE_SYSTEM }
       .select { |coding| SDOH_DOMAIN_CATEGORY_CODES.include?(coding.code) }
       .uniq(&:code)
-      .map { |coding| { "system": coding.system, "code": coding.code, "display": coding.display }.compact }
+      .map { |coding| FHIR::Coding.new(system: coding.system, code: coding.code, display: coding.display) }
   end
 
   def create_procedure(task, service_request)
     procedure = FHIR::Procedure.new
-    procedure.meta = {
-      "profile": [
-        FhirProfiles::PROCEDURE,
-      ],
-    }
-    procedure.basedOn = [{
-      "reference": "ServiceRequest/#{service_request.id}",
-    }]
+    procedure.meta = FHIR::Meta.new(profile: [FhirProfiles::PROCEDURE])
+    procedure.basedOn = [FHIR::Reference.new(reference: "ServiceRequest/#{service_request.id}")]
     procedure.status = "completed"
     procedure.category = service_request.category&.first
     procedure.code = service_request.code
@@ -424,7 +414,7 @@ class TasksController < ApplicationController
       if task.status == "requested" && requested_after?(task, at_capacity_since)
         fhir_task = task.fhir_resource
         fhir_task.status = "rejected"
-        fhir_task.statusReason = { text: "Rejected - at capacity" }
+        fhir_task.statusReason = FHIR::CodeableConcept.new(text: "Rejected - at capacity")
         client.update(fhir_task, fhir_task.id)
         rejected << Task.new(fhir_task, client)
       else
