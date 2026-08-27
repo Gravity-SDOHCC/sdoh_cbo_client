@@ -52,7 +52,7 @@ module TasksHelper
   def task_search_params
     {
       parameters: {
-        _profile: "http://hl7.org/fhir/us/sdoh-clinicalcare/StructureDefinition/SDOHCC-TaskForReferralManagement",
+        _profile: FhirProfiles::TASK_FOR_REFERRAL_MANAGEMENT,
         owner: "Organization/#{get_my_org_id}",
         _sort: "-_lastUpdated",
       },

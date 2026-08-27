@@ -18,23 +18,7 @@ class TasksController < ApplicationController
           client.update(task, task.id)
         elsif status == "completed"
           procedure = create_procedure(task, service_request)
-          task.output = [
-            {
-              type: {
-                coding: [
-                  {
-                    system: "http://hl7.org/fhir/us/sdoh-clinicalcare/CodeSystem/SDOHCC-CodeSystemTemporaryCodes",
-                    code: "resulting-activity",
-                    display: "Resulting Activity",
-                  },
-                ],
-              },
-              valueReference: {
-                reference: "Procedure/#{procedure.id}",
-              },
-            },
-          ]
-          # TODO create a procedure, attach it to task then save
+          append_output(task, type_code: FhirProfiles::RESULTING_ACTIVITY_CODE, reference: "Procedure/#{procedure.id}")
           client.update(task, task.id)
         end
 
@@ -111,7 +95,7 @@ class TasksController < ApplicationController
     procedure = FHIR::Procedure.new
     procedure.meta = {
       "profile": [
-        "http://hl7.org/fhir/us/sdoh-clinicalcare/StructureDefinition/SDOHCC-Procedure",
+        FhirProfiles::PROCEDURE,
       ],
     }
     procedure.basedOn = [{
@@ -125,6 +109,54 @@ class TasksController < ApplicationController
     procedure.performedDateTime = Time.now.utc.strftime("%Y-%m-%d")
 
     get_fhir_client.create(procedure).resource
+  end
+
+  # Adds one entry to Task.output.
+  #
+  # SDOHCC-TaskForReferralManagement slices Task.output and every slice is 0..*:
+  # a completed referral can carry a Procedure reference alongside a program
+  # enrollment status, assessment responses and anything a later step adds.
+  # Assigning the array replaced whatever was already there, so this appends.
+  #
+  # The slices are closed over what they may point at, so the reference is
+  # checked before it goes anywhere near the server: PerformedActivityReference
+  # only accepts Reference(SDOHCC-Procedure), and AdditionalContent is for
+  # everything except the performed activity itself.
+  def append_output(task, type_code:, reference:)
+    resource_type, = TaskIoEntry.parse_reference(reference)
+
+    case type_code
+    when FhirProfiles::RESULTING_ACTIVITY_CODE
+      unless resource_type == "Procedure"
+        raise ArgumentError, "#{reference} is not a Procedure: Task.output:PerformedActivityReference only accepts Reference(SDOHCC-Procedure)"
+      end
+      display = FhirProfiles::RESULTING_ACTIVITY_DISPLAY
+    when FhirProfiles::ADDITIONAL_CONTENT_CODE
+      if resource_type == "Procedure"
+        raise ArgumentError, "#{reference} is a Procedure: a performed activity belongs in Task.output:PerformedActivityReference, not AdditionalContent"
+      end
+      display = FhirProfiles::ADDITIONAL_CONTENT_DISPLAY
+    else
+      raise ArgumentError, "Unsupported Task.output type code #{type_code.inspect}"
+    end
+
+    output = FHIR::Task::Output.new(
+      type: {
+        coding: [
+          {
+            system: FhirProfiles::TEMPORARY_CODE_SYSTEM,
+            code: type_code,
+            display: display,
+          },
+        ],
+      },
+      valueReference: {
+        reference: reference,
+      },
+    )
+
+    task.output = Array(task.output) + [output]
+    task
   end
 
   def auto_reject_at_capacity(tasks)
