@@ -38,17 +38,23 @@ module SessionsHelper
     session[:org_id]
   end
 
+  # Capacity status lives on the organization's FHIR HealthcareService, not in
+  # the session, so it survives new sessions/restarts and is shared by everyone
+  # signed in as the same CBO (CFRID-944).
+  def capacity_status
+    @capacity_status ||= CapacityStatus.new(get_fhir_client, get_my_org_id)
+  end
+
   def save_capacity_status(status)
-    session[:capacity_status] = status
-    session[:capacity_status_set_at] = Time.now.utc.iso8601
+    capacity_status.save(status)
   end
 
   def get_capacity_status
-    session[:capacity_status] || "capacity"
+    capacity_status.status
   end
 
   def get_capacity_status_set_at
-    session[:capacity_status_set_at] && Time.parse(session[:capacity_status_set_at])
+    capacity_status.updated_at
   end
 
   def save_user_id(user_id)
