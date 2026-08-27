@@ -2,8 +2,6 @@ class CapacityController < ApplicationController
   before_action :require_fhir_client
 
   VALID_STATUSES = %w[capacity at-capacity has-waitlist assessment-required].freeze
-  CAPACITY_EXTENSION_URL = "http://hl7.org/fhir/us/sdoh-clinicalcare/StructureDefinition/SDOHCC-ExtensionHealthcareServiceCapacityStatus".freeze
-  TEMPORARY_CODE_SYSTEM = "http://hl7.org/fhir/us/sdoh-clinicalcare/CodeSystem/SDOHCC-CodeSystemTemporaryCodes".freeze
 
   # SDOHCC-ExtensionHealthcareServiceCapacityStatus is a complex extension: the
   # code goes on a capacityStatus sub-extension (1..1) and a value on the outer
@@ -63,16 +61,16 @@ class CapacityController < ApplicationController
 
       # Update or create the capacity extension
       service.extension ||= []
-      service.extension.reject! { |e| e.url == CAPACITY_EXTENSION_URL }
+      service.extension.reject! { |e| e.url == FhirProfiles::CAPACITY_STATUS_EXTENSION }
       service.extension << FHIR::Extension.new(
-        url: CAPACITY_EXTENSION_URL,
+        url: FhirProfiles::CAPACITY_STATUS_EXTENSION,
         extension: [
           FHIR::Extension.new(
             url: CAPACITY_STATUS_SUB_EXTENSION_URL,
             valueCodeableConcept: FHIR::CodeableConcept.new(
               coding: [
                 FHIR::Coding.new(
-                  system: TEMPORARY_CODE_SYSTEM,
+                  system: FhirProfiles::TEMPORARY_CODE_SYSTEM,
                   code: code
                 )
               ]
