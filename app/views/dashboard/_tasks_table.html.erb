@@ -112,27 +112,18 @@
               </td>
               <td>
                 <% if type == "completed" %>
-
+                  <%# One way in, the same as the Attachments cell. What came
+                      back is described in the drawer, in clinical terms; the
+                      cell does not try to summarise it. %>
                   <% if referral.outputs.present? %>
-                    <% referral.outputs.each_with_index do |output, index| %>
-                      <% if index.positive? %>, <% end %>
-                      <% if output.resource.blank? %>
-                        <span class="small-text"><%= [output.type_display, output.value].compact.join(": ") %></span>
-                      <% elsif output.resource_type == "Procedure" %>
-                        <%= link_to "#{output.resource_label.presence || output.type_display} (#{output.resource_type})", "#referral-procedure-modal-#{output.id}", data: { bs_toggle: "modal" } %>
-                        <% content_for :modals do %>
-                          <%= render "dashboard/procedure_modal", resource: output.resource %>
-                        <% end %>
-                      <% else %>
-                        <%# Name the resource, not the slice it arrived in. %>
-                        <%= link_to "#{output.resource_label.presence || output.type_display} (#{output.resource_type})", "#fhir-resource-modal-#{output.id}", data: { bs_toggle: "modal" } %>
-                        <% content_for :modals do %>
-                          <%= render "shared/fhir_resource_modal", resource: output.resource.fhir_resource %>
-                        <% end %>
-                      <% end %>
+                    <%= link_to "Review outcome", "#outcome-detail-#{referral.id}",
+                          class: "small-text fw-semibold",
+                          data: { bs_toggle: "offcanvas" } %>
+                    <% content_for :modals do %>
+                      <%= render "dashboard/outcome_detail", referral: referral %>
                     <% end %>
                   <% else %>
-                    --
+                    <span class="small-text text-secondary">Nothing returned</span>
                   <% end %>
                 <% elsif type == "active" && referral.status == "requested" %>
                   <%= link_to "accept/reject", "#request-action-modal-#{referral.id}", data: { bs_toggle: "modal" } %>
