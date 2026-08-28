@@ -1,10 +1,16 @@
-<% current_status = get_capacity_status %>
-<div class="btn-group capacity-status-toggle" role="group" aria-label="Capacity Status">
-  <span class="me-2 text-muted small align-self-center">Capacity Status</span>
-  <% CapacityStatus::STATUSES.each do |value, meta| %>
-    <% selected = current_status == value %>
-    <%= button_to meta[:label], capacity_status_path, params: { capacity_status: value }, method: :post,
-          class: "btn btn-sm #{selected ? "btn-#{meta[:style]}" : "btn-outline-#{meta[:style]}"}",
-          aria: { pressed: selected } %>
-  <% end %>
-</div>
+<%# One control with one current value, not four buttons in four colours. The
+     status is a single choice from SDOHCC-ValueSetCapacityStatus, so a select
+     says that; the colours said nothing except which button was pressed. %>
+<%= form_with url: capacity_status_path, method: :post, class: "d-flex align-items-center gap-2" do |f| %>
+  <%= f.label :capacity_status, "Capacity status", class: "text-muted small mb-0 text-nowrap" %>
+  <%= f.select :capacity_status,
+        options_for_select([["Capacity available", "capacity"],
+                            ["At capacity", "at-capacity"],
+                            ["Has waitlist", "has-waitlist"],
+                            ["Additional assessment required", "assessment-required"]],
+                           get_capacity_status),
+        {},
+        { class: "form-select form-select-sm", style: "width: auto;",
+          onchange: "this.form.requestSubmit()" } %>
+  <%= f.submit "Update", class: "btn btn-sm btn-outline-secondary" %>
+<% end %>
