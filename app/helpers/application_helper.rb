@@ -4,15 +4,24 @@ module ApplicationHelper
 
   def fetch_and_cache_organizations
     Rails.cache.fetch(organizations_key, expires_in: 1.day) do
-      response = get_fhir_client.search(FHIR::Organization).resource
+      client = get_fhir_client
+      raise "Not connected to a FHIR server. Please connect to a server and try again." if client.nil?
 
-      if response.is_a?(FHIR::Bundle)
-        entries = response.entry&.map(&:resource)
-        entries&.map { |entry| Organization.new(entry) }
+      reply = client.search(FHIR::Organization)
+      bundle = reply.resource
+
+      if bundle.is_a?(FHIR::Bundle)
+        entries = bundle.entry&.map(&:resource)
+        entries&.map { |entry| Organization.new(entry) } || []
       else
-        Rails.logger.error("Error fetching organizations from FHIR server. Status code: #{response.response[:code]}")
+        # `reply.resource` is the parsed resource, not the reply, so it has no
+        # #response. Read the status off the reply instead, or a server that
+        # answers with something other than a Bundle raises a NoMethodError
+        # whose message tells the user nothing.
+        status = reply&.response&.[](:code)
+        Rails.logger.error("Error fetching organizations from FHIR server. Status code: #{status}")
 
-        raise "Error fetching organizations from FHIR server. You need to identify as an organization to get started. Status code: #{response.response[:code]}"
+        raise "Error fetching organizations from #{get_requester_server_base_url.presence || "the selected FHIR server"}. It did not return a FHIR Bundle of Organizations, so there is nothing to identify as. Status code: #{status}"
       end
     end
   end
