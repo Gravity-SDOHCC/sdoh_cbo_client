@@ -1,4 +1,5 @@
-<div id="request-action-modal-<%= resource.id %>" class="modal" tabindex="-1" role="dialog">
+<div id="request-action-modal-<%= resource.id %>" class="modal" tabindex="-1" role="dialog"
+     data-controller="task-action">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -24,19 +25,53 @@
 
               <div class="label-value">
                 <span class="fw-semibold">Status:</span>
-                <select name="task_status" class="form-select small-text" id="task_status-<%= resource.id %>">
+                <select name="task_status" class="form-select small-text" id="task_status-<%= resource.id %>"
+                        data-task-action-target="statusSelect"
+                        data-action="change->task-action#statusChanged">
                   <option value="">update the status</option>
                   <% statuses.each do |status| %>
                     <option value="<%= status %>"><%= status %></option>
                   <% end %>
                 </select>
               </div>
-              <div class="label-value status-reason-container" style="display:none;">
+              <div class="label-value status-reason-container" style="display:none;"
+                   data-task-action-target="statusReasonContainer">
                 <span class="fw-semibold">Status Reason:</span>
                 <input type="text" name="status_reason" class="form-control small-text" id="status_reason-<%= resource.id %>">
               </div>
 
-
+              <%# Program enrollment status, revealed only when the status being %>
+              <%# set is completed. The CBO is the Referral Target in %>
+              <%# enrollment.html, so this is where the enrollment outcome is %>
+              <%# captured; leaving the status empty completes a referral that %>
+              <%# had nothing to do with enrolling anyone. %>
+              <% if statuses.include?("completed") %>
+                <div class="enrollment-status-container" style="display:none;"
+                     data-task-action-target="enrollmentContainer">
+                  <div class="label-value">
+                    <span class="fw-semibold">Program:</span>
+                    <select name="enrollment_program" class="form-select small-text" id="enrollment_program-<%= resource.id %>">
+                      <% enrollment_programs.each do |code, display| %>
+                        <option value="<%= code %>"><%= display %></option>
+                      <% end %>
+                    </select>
+                  </div>
+                  <div class="label-value">
+                    <span class="fw-semibold">Enrollment Status:</span>
+                    <select name="enrollment_status" class="form-select small-text" id="enrollment_status-<%= resource.id %>">
+                      <option value="">not an enrollment</option>
+                      <% enrollment_statuses.each do |code, display| %>
+                        <option value="<%= code %>"><%= display %></option>
+                      <% end %>
+                    </select>
+                  </div>
+                  <div class="label-value">
+                    <span class="fw-semibold">Note:</span>
+                    <input type="text" name="enrollment_note" class="form-control small-text" id="enrollment_note-<%= resource.id %>"
+                           placeholder="e.g. the waitlist is currently about 2 months long">
+                  </div>
+                </div>
+              <% end %>
 
               <!-- submit button -->
               <div class="modal-footer">
@@ -50,15 +85,3 @@
     </div>
   </div>
 </div>
-
-<script>
-  document.getElementById("task_status-<%= resource.id %>").addEventListener("change", function() {
-    const statusReasonContainer = document.querySelector(".status-reason-container");
-    if (this.value === "rejected" || this.value === "cancelled") {
-      statusReasonContainer.style.display = "block";
-    } else {
-      statusReasonContainer.style.display = "none";
-    }
-
-  });
-</script>
