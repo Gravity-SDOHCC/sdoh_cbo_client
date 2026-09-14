@@ -25,6 +25,21 @@ class TasksController < ApplicationController
     "481021000124104" => "Adult protective service (qualifier value)",
   }.freeze
 
+  # What Task.output:AdditionalContent is allowed to reference.
+  #
+  # SDOHCC-TaskForReferralManagement closes the slice to
+  # Reference(SDOHCC Observation Program Enrollment Status |
+  # SDOHCC Observation Assessment | SDOHCC Observation Screening Response |
+  # SDOHCC Goal | SDOHCC Condition | QuestionnaireResponse | CarePlan), which is
+  # these five resource types.
+  #
+  # Procedure is deliberately absent. rffa.html lists Procedures among the
+  # results of an assessment, but the profile keeps them in
+  # Task.output:PerformedActivityReference, whose target is closed to
+  # Reference(SDOHCC Procedure) -- so the Procedure this client already creates
+  # on completion stays where it is and nothing else goes there.
+  ASSESSMENT_FINDING_TYPES = %w[QuestionnaireResponse Observation Condition Goal CarePlan].freeze
+
   # SDOHCC-ValueSetSDOHCategory, the required binding on category[SDOHCC].
   # The domain code is copied from the ServiceRequest being fulfilled rather
   # than asked for again, and it is checked against the value set first: a
@@ -53,7 +68,7 @@ class TasksController < ApplicationController
         if status == "accepted" || status == "in-progress"
           client.update(task, task.id)
         elsif status == "rejected" || status == "cancelled"
-          task.statusReason = { text: params[:status_reason] }
+          task.statusReason = FHIR::CodeableConcept.new(text: params[:status_reason])
           client.update(task, task.id)
         elsif status == "completed"
           # Both resources are created before the Task is updated. A referral
@@ -65,6 +80,7 @@ class TasksController < ApplicationController
           if observation.present?
             append_output(task, type_code: FhirProfiles::ADDITIONAL_CONTENT_CODE, reference: "Observation/#{observation.id}")
           end
+          attach_assessment_findings(task)
           client.update(task, task.id)
         end
 
@@ -164,36 +180,32 @@ class TasksController < ApplicationController
     end
 
     observation = FHIR::Observation.new
-    observation.meta = {
-      "profile": [
-        FhirProfiles::OBSERVATION_PROGRAM_ENROLLMENT_STATUS,
-      ],
-    }
+    observation.meta = FHIR::Meta.new(profile: [FhirProfiles::OBSERVATION_PROGRAM_ENROLLMENT_STATUS])
     observation.status = "final"
     observation.category = enrollment_categories(service_request)
-    observation.code = {
-      "coding": [
-        {
-          "system": FhirProfiles::SNOMED_CT_SYSTEM,
-          "code": program_code,
-          "display": ENROLLMENT_PROGRAMS[program_code],
-        },
+    observation.code = FHIR::CodeableConcept.new(
+      coding: [
+        FHIR::Coding.new(
+          system: FhirProfiles::SNOMED_CT_SYSTEM,
+          code: program_code,
+          display: ENROLLMENT_PROGRAMS[program_code],
+        ),
       ],
-    }
+    )
     observation.subject = task.for.presence || service_request.subject
-    observation.performer = [{ "reference": "Organization/#{get_my_org_id}" }]
+    observation.performer = [FHIR::Reference.new(reference: "Organization/#{get_my_org_id}")]
     observation.effectiveDateTime = Time.now.utc.iso8601
-    observation.valueCodeableConcept = {
-      "coding": [
-        {
-          "system": FhirProfiles::TEMPORARY_CODE_SYSTEM,
-          "code": status_code,
-          "display": ENROLLMENT_STATUSES[status_code],
-        },
+    observation.valueCodeableConcept = FHIR::CodeableConcept.new(
+      coding: [
+        FHIR::Coding.new(
+          system: FhirProfiles::TEMPORARY_CODE_SYSTEM,
+          code: status_code,
+          display: ENROLLMENT_STATUSES[status_code],
+        ),
       ],
-    }
+    )
     note = params[:enrollment_note].presence
-    observation.note = [{ "text": note }] if note
+    observation.note = [FHIR::Annotation.new(text: note)] if note
 
     created = get_fhir_client.create(observation).resource
     if created.blank? || created.id.blank?
@@ -207,28 +219,28 @@ class TasksController < ApplicationController
   # fixed by the profile; the SDOH domain code comes from the referral.
   def enrollment_categories(service_request)
     categories = [
-      {
-        "coding": [
-          {
-            "system": FhirProfiles::US_CORE_CATEGORY_SYSTEM,
-            "code": FhirProfiles::SDOH_CATEGORY_CODE,
-            "display": FhirProfiles::SDOH_CATEGORY_DISPLAY,
-          },
+      FHIR::CodeableConcept.new(
+        coding: [
+          FHIR::Coding.new(
+            system: FhirProfiles::US_CORE_CATEGORY_SYSTEM,
+            code: FhirProfiles::SDOH_CATEGORY_CODE,
+            display: FhirProfiles::SDOH_CATEGORY_DISPLAY,
+          ),
         ],
-      },
-      {
-        "coding": [
-          {
-            "system": FhirProfiles::TEMPORARY_CODE_SYSTEM,
-            "code": FhirProfiles::PROGRAM_ENROLLMENT_CATEGORY_CODE,
-            "display": FhirProfiles::PROGRAM_ENROLLMENT_CATEGORY_DISPLAY,
-          },
+      ),
+      FHIR::CodeableConcept.new(
+        coding: [
+          FHIR::Coding.new(
+            system: FhirProfiles::TEMPORARY_CODE_SYSTEM,
+            code: FhirProfiles::PROGRAM_ENROLLMENT_CATEGORY_CODE,
+            display: FhirProfiles::PROGRAM_ENROLLMENT_CATEGORY_DISPLAY,
+          ),
         ],
-      },
+      ),
     ]
 
     sdoh_domain_codings(service_request).each do |coding|
-      categories << { "coding": [coding] }
+      categories << FHIR::CodeableConcept.new(coding: [coding])
     end
 
     categories
@@ -239,27 +251,36 @@ class TasksController < ApplicationController
       .select { |coding| coding.system == FhirProfiles::TEMPORARY_CODE_SYSTEM }
       .select { |coding| SDOH_DOMAIN_CATEGORY_CODES.include?(coding.code) }
       .uniq(&:code)
-      .map { |coding| { "system": coding.system, "code": coding.code, "display": coding.display }.compact }
+      .map { |coding| FHIR::Coding.new(system: coding.system, code: coding.code, display: coding.display) }
   end
 
   def create_procedure(task, service_request)
     procedure = FHIR::Procedure.new
-    procedure.meta = {
-      "profile": [
-        FhirProfiles::PROCEDURE,
-      ],
-    }
-    procedure.basedOn = [{
-      "reference": "ServiceRequest/#{service_request.id}",
-    }]
+    procedure.meta = FHIR::Meta.new(profile: [FhirProfiles::PROCEDURE])
+    procedure.basedOn = [FHIR::Reference.new(reference: "ServiceRequest/#{service_request.id}")]
     procedure.status = "completed"
     procedure.category = service_request.category&.first
     procedure.code = service_request.code
     procedure.subject = service_request.subject
-    procedure.reasonReference = service_request.reasonReference
+    procedure.reasonReference = referenceable(service_request.reasonReference)
     procedure.performedDateTime = Time.now.utc.strftime("%Y-%m-%d")
 
     get_fhir_client.create(procedure).resource
+  end
+
+  # Drops references that name no resource.
+  #
+  # "Condition/" is not a reference, and copying one onto the Procedure makes
+  # the FHIR server reject the whole resource: HAPI-0508 "Invalid resource
+  # reference found at path[Procedure.reasonReference] - Does not contain
+  # resource ID". The referral source client writes exactly that whenever a
+  # referral is created with no problem selected, and the coordination platform
+  # copies the ServiceRequest through unchanged, so a referral carrying one
+  # could not be completed at all: the create failed, and fhir_client reported
+  # it as "undefined method `each_element' for Hash" rather than as the 400 it
+  # was.
+  def referenceable(references)
+    Array(references).select { |reference| TaskIoEntry.parse_reference(reference.reference).last.present? }.presence
   end
 
   # Adds one entry to Task.output.
@@ -310,6 +331,81 @@ class TasksController < ApplicationController
     task
   end
 
+  # Returns the assessment findings selected in the completion modal through
+  # Task.output:AdditionalContent.
+  #
+  # rffa.html: the referral for further assessment reuses the closed-loop
+  # pattern unchanged, and what differs is that "when the loop is closed, the
+  # information returned in Task.output consists of the findings from that
+  # assessment". This client is the Referral Target, so it is the one that
+  # returns them.
+  #
+  # This attaches findings that already exist on the server. Authoring
+  # assessment content here -- an Observation Assessment builder, a CarePlan --
+  # is a follow-on.
+  #
+  # The status form is a GET, so every selection is checked before it is
+  # trusted: the resource type has to be one the slice accepts, the resource has
+  # to exist, and it has to belong to this referral's patient. Without the last
+  # check a hand-edited query string could attach one patient's records to
+  # another patient's referral.
+  def attach_assessment_findings(task)
+    references = Array(params[:findings]).map(&:to_s).reject(&:blank?).uniq
+    return if references.empty?
+
+    patient_id = task.for&.reference_id
+    raise ArgumentError, "This referral names no patient, so findings cannot be checked against it" if patient_id.blank?
+
+    references.each do |reference|
+      resource_type, resource_id = TaskIoEntry.parse_reference(reference)
+      unless ASSESSMENT_FINDING_TYPES.include?(resource_type) && resource_id.present?
+        raise ArgumentError, "#{reference} is not a kind of assessment finding Task.output:AdditionalContent accepts"
+      end
+
+      finding = read_finding(resource_type, resource_id)
+      raise ArgumentError, "#{reference} was not found on the FHIR server" if finding.blank?
+
+      if personal_characteristic?(finding)
+        raise ArgumentError, "#{reference} is a personal characteristic, which Task.output:AdditionalContent does not accept"
+      end
+
+      subject_id = finding.subject&.reference_id
+      unless subject_id == patient_id
+        raise ArgumentError, "#{reference} belongs to #{subject_id.presence || "no patient"}, not to this referral's patient"
+      end
+
+      append_output(task, type_code: FhirProfiles::ADDITIONAL_CONTENT_CODE, reference: "#{resource_type}/#{resource_id}")
+    end
+
+    Rails.cache.delete(findings_key(patient_id))
+  end
+
+  # The slice accepts three Observation profiles and none of the six
+  # personal-characteristic ones, so "it is an Observation" is not enough to let
+  # one through. The picker no longer offers them, and this is the half that
+  # matters: the status form is a GET, so what the picker shows and what Submit
+  # accepts have to be narrowed together.
+  def personal_characteristic?(fhir_resource)
+    return false unless fhir_resource.is_a?(FHIR::Observation)
+
+    profiles = Array(fhir_resource.meta&.profile).map(&:to_s)
+    return true if (profiles & FhirProfiles::OBSERVATION_PERSONAL_CHARACTERISTIC_PROFILES).any?
+
+    Array(fhir_resource.category).flat_map { |category| Array(category&.coding) }
+      .any? { |coding| coding&.code == FhirProfiles::PERSONAL_CHARACTERISTIC_CATEGORY_CODE }
+  end
+
+  def read_finding(resource_type, resource_id)
+    fhir_class = FHIR.const_get(resource_type, false)
+    resource = get_fhir_client.read(fhir_class, resource_id).resource
+    # sometimes for some reason read returns FHIR::Bundle
+    resource = resource&.entry&.first&.resource if resource.is_a?(FHIR::Bundle)
+    resource.is_a?(fhir_class) ? resource : nil
+  rescue StandardError => e
+    Rails.logger.warn("Unable to read #{resource_type}/#{resource_id}: #{e.message}")
+    nil
+  end
+
   def auto_reject_at_capacity(tasks)
     client = get_fhir_client
     at_capacity_since = get_capacity_status_set_at
@@ -318,7 +414,7 @@ class TasksController < ApplicationController
       if task.status == "requested" && requested_after?(task, at_capacity_since)
         fhir_task = task.fhir_resource
         fhir_task.status = "rejected"
-        fhir_task.statusReason = { text: "Rejected - at capacity" }
+        fhir_task.statusReason = FHIR::CodeableConcept.new(text: "Rejected - at capacity")
         client.update(fhir_task, fhir_task.id)
         rejected << Task.new(fhir_task, client)
       else

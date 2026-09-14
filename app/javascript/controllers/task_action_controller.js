@@ -10,12 +10,12 @@
 // rather than the one in the open modal. Everything here is scoped to
 // this.element, which is the modal itself.
 //
-// The enrollment container is only rendered in the modal that offers
-// "completed", so every reference to it is guarded.
+// The enrollment and findings containers are only rendered in the modal that
+// offers "completed", so every reference to them is guarded.
 import { Controller } from "@hotwired/stimulus";
 
 export default class extends Controller {
-  static targets = ["statusSelect", "statusReasonContainer", "enrollmentContainer"];
+  static targets = ["statusSelect", "statusReasonContainer", "enrollmentContainer", "findingsContainer"];
 
   connect() {
     this.statusChanged();
@@ -32,6 +32,11 @@ export default class extends Controller {
     // for only on the way to completed.
     if (this.hasEnrollmentContainerTarget) {
       this.toggle(this.enrollmentContainerTarget, status === "completed");
+    }
+
+    // So are the assessment findings the referral is closed with.
+    if (this.hasFindingsContainerTarget) {
+      this.toggle(this.findingsContainerTarget, status === "completed");
     }
   }
 

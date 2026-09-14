@@ -69,6 +69,37 @@ module TasksHelper
     end
   end
 
+  # The assessment findings already on the server for this referral's patient,
+  # offered by the completion modal so this client can return them in
+  # Task.output:AdditionalContent.
+  #
+  # Cached per patient: the dashboard polls every 30 seconds and re-renders every
+  # modal, so without this it would be one search per resource type per task per
+  # poll. Only the modal that offers "completed" asks for findings, which keeps
+  # the searches to accepted and in-progress referrals rather than the whole
+  # table.
+  def assessment_findings(patient_id, category_codes = [])
+    return if patient_id.blank?
+
+    Rails.cache.fetch(findings_key(patient_id), expires_in: 5.minutes) do
+      AssessmentFindings.load(
+        fhir_client: get_fhir_client,
+        patient_id: patient_id,
+        category_codes: category_codes,
+      )
+    end
+  end
+
+  # An SDOH domain code as the modal shows it: "housing-instability" is not a
+  # word anyone says out loud.
+  def sdoh_domain_label(code)
+    code.to_s.tr("-", " ").titleize
+  end
+
+  def findings_key(patient_id)
+    "#{session_id}_findings_#{patient_id}"
+  end
+
   # The program and enrollment status lists offered by the accepted-task modal.
   # They belong to TasksController, which is what writes the Observation, and
   # the modal is rendered from the dashboard, so a helper is how the view reaches
@@ -97,6 +128,7 @@ module TasksHelper
     body = body.to_s
     body.length > MAX_ERROR_BODY_LENGTH ? "#{body[0, MAX_ERROR_BODY_LENGTH]}..." : body
   end
+
 
   def group_tasks(tasks)
     grp = { "active" => [], "completed" => [], "cancelled" => [] }
