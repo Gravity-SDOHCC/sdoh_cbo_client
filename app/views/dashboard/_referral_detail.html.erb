@@ -1,0 +1,38 @@
+<%# Referral intake. Sections are the ones an intake screen has - referral,
+     problem list, screening, assessments, goals - and each is omitted when the
+     referral did not carry it. The FHIR resources themselves are listed once,
+     at the foot, rather than in the reading path. %>
+<% detail = ReferralDetail.new(referral) %>
+<div class="offcanvas offcanvas-end" tabindex="-1" id="referral-detail-<%= referral.id %>" style="width: 720px;">
+
+  <%= render "dashboard/patient_banner", patient: referral.patient_resource, patient_name: referral.patient_name %>
+
+  <div class="offcanvas-body pt-3">
+    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+      <h5 class="fw-semibold mb-0" style="font-size:19px;"><%= referral.focus&.description || "Referral" %></h5>
+      <span class="badge text-bg-secondary text-uppercase flex-shrink-0"><%= referral.status.to_s.tr("-", " ") %></span>
+    </div>
+
+    <%= render layout: "dashboard/referral_section", locals: { title: "Referral" } do %>
+      <% if referral.focus&.sdoh_category_codes.present? %>
+        <%= render "dashboard/referral_field", label: "Reason", value: referral.focus.sdoh_category_codes.map { |code| code.tr("-", " ").titleize }.join(", ") %>
+      <% end %>
+      <%= render "dashboard/referral_field", label: "Service requested", value: referral.focus&.description %>
+      <%= render "dashboard/referral_field", label: "Priority", value: [referral.focus&.priority&.titleize, ("requested #{referral.authored_on.strftime("%b %-d, %Y")}" if referral.authored_on.present?)].compact_blank.join(" · ") %>
+      <%= render "dashboard/referral_field", label: "Referred by", value: referral.requester_name %>
+      <%= render "dashboard/referral_field", label: "Assigned to", value: referral.owner_name %>
+      <% if referral.consent.present? %>
+        <%= render "dashboard/referral_field", label: "Consent", value: "On file · #{referral.consent.code}" %>
+      <% end %>
+    <% end %>
+
+    <%= render "dashboard/clinical_sections", detail: detail %>
+
+    <%= render "dashboard/content_technical_details", detail: detail,
+          collapse_id: "referral-tech-#{referral.id}", title: "Attachments and technical details" %>
+
+    <% if detail.attachments.blank? && detail.unresolved.blank? %>
+      <div class="text-secondary small-text mt-3">No supporting information was sent with this referral.</div>
+    <% end %>
+  </div>
+</div>

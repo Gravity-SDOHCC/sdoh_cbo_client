@@ -19,6 +19,7 @@ class Finding
     instrument: { label: "Completed instruments", badge: "bg-info text-dark", badge_label: "Instrument" },
     answer: { label: "Individual answers", badge: "bg-light text-dark border", badge_label: "Answer" },
     assessment: { label: "Assessment results", badge: "bg-primary", badge_label: "Assessment" },
+    enrollment: { label: "Program enrollment", badge: "bg-dark", badge_label: "Enrollment" },
     condition: { label: "Health concerns", badge: "bg-danger", badge_label: "Condition" },
     goal: { label: "Goals", badge: "bg-success", badge_label: "Goal" },
     other: { label: "Other", badge: "bg-secondary", badge_label: "Other" },
@@ -98,6 +99,7 @@ class Finding
     when FHIR::Condition then :condition
     when FHIR::Goal then :goal
     when FHIR::Observation
+      return :enrollment if enrollment_status?(fhir_resource)
       return :assessment if @profiles.include?(FhirProfiles::OBSERVATION_ASSESSMENT)
       return :answer if @profiles.include?(FhirProfiles::OBSERVATION_SCREENING_RESPONSE)
 
@@ -107,6 +109,16 @@ class Finding
     end
   end
 
+  # SDOHCC-ObservationProgramEnrollmentStatus fixes category[enrollment] to
+  # program-enrollment. Task.output:AdditionalContent carries assessments,
+  # screening responses, goals and conditions alongside it, so the category is
+  # what tells an enrollment status apart from them - and it is read rather than
+  # meta.profile because data written by another system may not declare one.
+  def enrollment_status?(fhir_resource)
+    Array(fhir_resource.category).flat_map { |category| Array(category&.coding) }
+      .any? { |coding| coding&.code == FhirProfiles::PROGRAM_ENROLLMENT_CATEGORY_CODE }
+  end
+
   # Each of these resources says what it is in a different element.
   def read_label(fhir_resource, questionnaire_titles)
     text =
@@ -114,7 +126,13 @@ class Finding
       when FHIR::Goal then codeable_text(fhir_resource.description)
       when FHIR::CarePlan then fhir_resource.title.presence || codeable_text(fhir_resource.category&.first)
       when FHIR::QuestionnaireResponse then questionnaire_label(fhir_resource, questionnaire_titles)
-      else codeable_text(fhir_resource.code)
+      when FHIR::Consent then codeable_text(Array(fhir_resource.category).first)
+      when FHIR::DocumentReference then fhir_resource.description.presence || codeable_text(fhir_resource.type)
+      else
+        # Task.input:AdditionalContent is Reference(Resource) with no
+        # targetProfile, so this now sees types the output slice never carried -
+        # and FHIR::Consent has category, scope and provision but no code.
+        codeable_text(fhir_resource.code) if fhir_resource.respond_to?(:code)
       end
 
     text.presence || reference
@@ -126,6 +144,7 @@ class Finding
   def questionnaire_label(fhir_resource, questionnaire_titles)
     canonical = fhir_resource.questionnaire.to_s
     questionnaire_titles[canonical.split("|").first].presence ||
+      canonical.split("/").reject(&:blank?).last.to_s.sub(/\ASDOHCC-Questionnaire/, "").presence ||
       canonical.split("/").reject(&:blank?).last
   end
 
